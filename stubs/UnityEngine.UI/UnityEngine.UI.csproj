@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>UnityEngine.UI</AssemblyName>
+    <RootNamespace>UnityEngine.UI</RootNamespace>
+  </PropertyGroup>
+</Project>

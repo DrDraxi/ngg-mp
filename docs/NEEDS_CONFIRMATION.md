@@ -1,0 +1,157 @@
+# Game facts to confirm against the real decompiled code
+
+Collected from the implementers and reviewers. Each item is an assumption the code relies on.
+
+Checked against the decompiled game in docs/confirm/answers-1.md (items 1-68) and answers-2.md (69-149), numbered in
+this file's order. `[x]` confirmed true; `[!]` false or incomplete, with the fix or a pointer to the answer; `[?]` needs
+a runtime check on the real game (the code handles either outcome and logs which one happened; see docs/TESTING.md).
+
+- [x] SteamManager.Initialized and SteamManager.Instance: static properties or fields? Is Instance public?
+- [x] AchievementID: top-level enum, or nested in SteamManager?
+- [x] FirstPersonCharacter.cameraParent type (stubbed as GameObject). Is _cameraPitch really public?
+- [x] ECM2.Character exact signatures: SetPosition(Vector3,bool), TeleportPosition(Vector3,bool,bool), and whether these parameters have defaults.
+- [x] ControlMode numeric order (Golf=0, Walk=1?).
+- [!] Ball field access: m_rb, m_ballSpinForce, m_currentShotData, m_ballHit, m_isMultiShot, m_currentShot stubbed public; m_canRetakeShot, m_isInContact, m_ballHasBounced, m_meshRenderer, m_resumeBallTrigger stubbed private. Also the types of m_meshRenderer and m_resumeBallTrigger. (fixed: every listed Ball field is public in the stub and read directly)
+- [x] Ball.BonusFriction / SpinApplication / ResetCurrentShot: signatures and access. KillBall assumed public void KillBall().
+- [x] ClubSwing m_power/m_loft/m_backSpin are float? Is UpdateClub public? Signatures of GetNewReturnRate and ResetArms.
+- [x] Spin m_angle/m_spin/m_spinForceMultiplier: types (float?) and access (public?). Signatures of ApplyChaos/ApplySpinChaos/ApplyWiggleChaos/ResolveFinalAngle. Parameter name of Spin.Unlock(bool).
+- [x] PanelManager panel fields public? Type of m_fmvPanel. Real type name of m_clubPanel (has Unlock(bool)).
+- [!] HitSequeneceManager: return type of HitSequence; access of Restart, ShowBallInHoleFeedback, RestartInput; types and access of m_FMVCam, m_PIPCameraHolder, m_showPIP, m_tpc. (fixed: HitSequeneceManager stub signatures corrected; m_showPIP moved to PanelAnimator.instance)
+- [x] GreatConnector: signatures and access of GetTee, GetChallengeSet, ActivateTee, DisableAllTees, HasTee; access of m_allChallenges and m_elevator.
+- [!] BallTarget fields (isHole, holeNumber, par): public? (fixed: only holeNumber is public in the stub; isHole, par and id private)
+- [!] Kinds of ShotTarget (class vs struct), ChallengeHelpers, ScoreCardSave, GameSettings, ScoreCardEntry, BountyValues, BallLooks. (fixed: stub kinds corrected (ScoreCardSave and GameSettings structs, ChallengeHelpers [Flags], the rest classes))
+- [x] Challenge field types: m_arrowPointAt, m_finishDistanceHoleID, staticPIPLocation, m_streaksRequired, m_maxShots, m_targetsRequiredOverride, m_minDistanceHit, giveBountyRewardEarly.
+- [!] Members of enums Difficulty, Clubs, Surfaces, HoleResult, Speakers. The name of Club's Clubs-flags field. (fixed: enum members filled in from the decompile; the Club field is clubEnumSorry)
+- [x] ChallengeSystem: IsFinalChallenge return type, CheckTeeRequirement return type, CompareStringsStart static or instance, CompletedFinalChallenge parameter.
+- [x] BountyBalancer.GetDifficultyValue returns int? Are m_bounties and UpdateBountyBoards public?
+- [x] StreaksPanel.m_streak: real type name and kind.
+- [x] PicketGates/Doors/SlidingDoors: top-level or nested in ObjectStates?
+- [x] Authenticator.code: type (string or int) and access; m_text access.
+- [x] DialogueManager: access and return types of OpenSequence, TryTrueEnding, ServerSequence, BunkerSequence, FinalDoorSequence, PadlockSequence; LockPlayer parameter name.
+- [!] TeleportManager: does it have a static instance? Is FadeDownEnding public? TeleTransition signature. (fixed: no static instance; TeleportManager is patched by type and reached through Teleporter.m_teleManager)
+- [x] Elevator.m_bunker type and access. LukeVideo LukeHitSequence/LukeLeaveSequence signatures.
+- [x] MainMenu.Start access; access of PauseMenu and MainMenu button methods; PlayerPressedEscape.OpenMenu access.
+- [x] InputManager.input and m_isUsingGamePad access. PanelAnimator.m_PIPCamera type and access. GolfVideo.m_videoReadyToPlay and FirstPersonVideo.m_videoPlayer access.
+- [x] Utilities.CleanString and Utilities.Loc: namespace Utilities with static classes, or nested classes? Parameter names.
+- [x] Unity 6 Managed folder file names: UnityEngine.UI.dll, Unity.TextMeshPro.dll and Unity.InputSystem.dll present? Is TMP still Unity.TextMeshPro in Unity 6 (ugui 2.0)?
+- [x] LoadRunSave / LoadStoryRun / LoadNormalGolfRun: do they assign m_run themselves, or does the caller?
+- [x] File format of run2.txt / actuallyNormal.txt: plain JsonUtility JSON, or CompressSave / EncodeDecode? This matters for the sandbox copy that SaveReader reads in CREDITS.
+- [!] Does the game write save files anywhere besides WriteSave, SafeWrite, SaveUnlocks, AddScoreToCard, Delete*, CreateBackupOfSave and UpgradeDemoSave (other classes, quit handlers, SaveReader)? (fixed: SetUpScene broken-save path guarded (RunGuard), config.txt and PlayerPrefs "rebinds" covered by savecheck; no quit handlers)
+- [x] SaveManager.SetUpScene: does it run only in Main? Which rotation space does it apply to m_savedObjects, and does it use gameObject.SetActive?
+- [!] MainMenu.Start calls LoadRunSave and forces Story; what does PlayGame do for a new game (DeleteRun, DifficultySelect)? (see answers: PlayGame never calls DeleteRun; a new run is created in Main)
+- [!] Does PauseMenu.RestartFromHole1 reload the Main scene? (see answers: no reload, CompleteNormalGolfRound then Exit)
+- [x] Are BuyClub / Buy* interaction prices stored in FPSInteractable.m_cashValue?
+- [x] Is the bounty reward on easy mode (completedOnEasy) the same GetDifficultyValue(difficulty)?
+- [!] rb applier mapping: m_aimUnlocked <-> UnlockAdjust, and the club panel (m_clubPanel.Unlock) <-> m_ironUnlocked. (fixed: the club panel goes with m_putterUnlocked; m_ironUnlocked only sets the field)
+- [!] Luke1..16, EndLuke0..13, ReturnLuke*: do they change world state (NPC placement) or only presentation? (fixed: Luke/EndLuke/ReturnLuke are presentation; EndLukeFadeDown is a host-only ending)
+- [x] Does ChallengeSystem.m_mainChallengeSet keep its challenges' m_complete while a bounty set is loaded, and does LoadNewChallengeSet(set, skipToChallenge) mark earlier challenges complete?
+- [!] Does CompleteChallenge on a bounty's final challenge call BountyPad.Complete(true) on m_activeBountyPad? (fixed: every pad of the clean set name is completed; the entry waits while the player is inside that bounty)
+- [?] Are the shop standees (m_driver, m_driverStandee, ...) SaveableObjects? (runtime: logged once which shop objects are SaveableObjects)
+- [x] Does Authenticator.m_text show the code, and does InputBoard.AddInput compare against Authenticator.code?
+- [x] Does TriviaBoard.ShuffleButtons use only UnityEngine.Random?
+- [!] Where is WindPanel.WindCycle started, and what does m_desiredWind drive? (fixed: replayed StartWind runs at most once per world; game WindCycles are paused, not skipped, while following the host)
+- [!] LMUGC.CompleteHole id format, and is Ball.m_currentShot 0-based or 1-based? (fixed: the hole is the FIRST number of the id; m_currentShot is 0-based)
+- [!] Does anything else set Time.timeScale = 0? (fixed: freeze sources are OpenMenu and the debug screenshotter; restore paths as listed)
+- [x] Who calls UnlockNewBall, and what does its return value mean?
+- [x] GameMode enum order (Story = 0, JustGolf = 1?) and ControlMode order (Golf, Walk?).
+- [!] Does the game save on application quit? (see answers: no save on quit; the fence stays)
+- [?] The lobby toggle key in config is F7 (ToggleWindowKey), not F8 as the task stated; confirm which is intended. (mod decision: F7 kept as the default)
+- [x] Ball.m_currentShot base (0 or 1) and whether it has already been incremented when the HitHall postfix runs; the stroke number is sent as m_currentShot + 1
+- [!] LMUGC.CompleteHole id format: the hole is taken from the last number in the id; a missing or out-of-range number falls back to the next unplayed hole with a one-time warning (fixed: the first number is used, like the game)
+- [!] Scale of the HitBall power argument (0..1 or a percentage); it decides how the 82% in the shot toast is computed (fixed: power is sent as m_power / powerVisualMult)
+- [!] Units of CurrentShotData.m_finishedDistance (metres assumed in the toast) (fixed: Unity units shown as the game's yd; 999 and -1 show no distance)
+- [!] Whether ECM2.Character.GetPosition() and m_golferHolder.position are at the feet; avatars are built upward from the pose position (fixed: golf pose at m_ballPosition (the walker's spot); bots use GolfStance)
+- [x] WindPanel.WindCycle start sites: a skipped start is restarted when following the host's wind ends; if the game's earlier cycle is still running, two cycles could run at once
+- [!] Whether WindPanel.Update eases m_currentWind toward m_desiredWind itself (the client overrides both in the LateUpdate postfix) (fixed: easing is in WindCycle; the client override in LateUpdate stays)
+- [!] Whether the PauseMenu GameObject is inactive while the menu is closed; the restore-by-poll relies on that, otherwise only PauseMenu.Exit / QuitToMenu restore input (fixed: the settings submenu counts as paused)
+- [x] Whether input other than FirstPersonCharacterInput, FirstPersonCharacterLookInput and ClubSwing (InputSystem actions such as Switch or Use handled in MoveAndHitController.Update or InteractChecker) still acts while the pause menu is open at timeScale 1
+- [x] PauseMenu.QuitToMenu and Exit reset Time.timeScale to 1 themselves (assumed when restoring after the session ends)
+- [x] Whether PlayerPressedEscape.OpenMenu, PauseMenu.Exit/QuitToMenu, HitSequeneceManager.Restart(bool), CompleteSequence(Ball) and ShowBallInHoleFeedback(int,bool) have these exact names and signatures (all are patched by name)
+- [x] Ball.m_rb (Rigidbody), m_currentShot (int), m_currentShotData, m_meshRenderer and MoveAndHitController.m_fpsInput, PanelManager.m_clubSwingPanel, Cosmetics.m_balls[i].mat: field names and types
+- [x] ECM2.Character exposes IsCrouched(), IsOnGround() and GetVelocity() (called by name)
+- [x] Challenge.m_forceWind is a bool field (if missing, the whole host-wind feature is switched off)
+- [!] Whether JustGolf's LoadInLMUGC calls LMUGC.StartChallenge (if not, the client's round starts at its first completed hole) (fixed: resume through LoadInToChallenge seeds the scored holes)
+- [x] Whether FinishChallenge or CompleteNormalGolfRound call ExitChallenge themselves (covered by the 0.5 s abort grace)
+- [x] Whether the Tab key is used by the game: yes, `Switch: <Keyboard>/tab` (harness 'check tab', 2026-10-20). The scorecard key is now `[General] ScorecardKey`, default H (free in the game's bindings; 'check tab' / 'check keys' verify it)
+- [?] Whether ball skin materials look right on a Unity sphere primitive (its UVs differ from the game's ball mesh) (runtime: visual check)
+- [x] Spec 11.1: LoadRunSave/LoadStoryRun/LoadNormalGolfRun/GetBackUpStorySave - injection sets both m_run and __result; confirm callers and that LoadRunSave dispatches to LoadStoryRun/LoadNormalGolfRun
+- [x] Spec 11.2: run2.txt/actuallyNormal.txt are plain JsonUtility JSON (sandbox copies are plain JSON for SaveReader in CREDITS); if CompressSave/EncodeDecode is used, SaveReader would misread the sandbox
+- [!] Spec 11.3: no save writes outside WriteSave/SafeWrite/SaveUnlocks/AddScoreToCard/DeleteRun/DeleteEverything/CreateBackupOfSave/UpgradeDemoSave (e.g. SaveReader, quit handlers, BallSelectMenu, File.WriteAllText inside WriteSave for JustGolf reads m_normalGolfSavePath at write time) (fixed: the extra writers are guarded or checked; a pending WriteSave is stopped at protection start and at the fence)
+- [x] SaveManager is a per-scene object (not DontDestroyOnLoad), so Menu2's SaveManager.Start/MainMenu.Start re-reads the own save from disk; code also reloads from disk if the same instance survives
+- [x] MainMenu.Start runs on every Menu2 load and calls LoadRunSave (used as the Menu2 settle point and fence drop); Start is private (ACCESS-GUESS)
+- [!] SetUpScene broken-save reload of Main: injected run must not look broken (track fact set name is the clean ChallengeSet name accepted by GreatConnector.GetChallengeSet); loop guard falls back to the raw host run after 4 Main loads/30 s (fixed: RunGuard keeps an injected run off the broken-save path and away from Instantiate(null))
+- [x] PlayerPressedEscape.OpenMenu, PauseMenu.Exit, PauseMenu.QuitToMenu names/signatures (ACCESS-GUESS); PauseMenu component's GameObject is inactive when the menu is closed (used by the close poll); QuitToMenu calls SaveRun then LoadScene("Menu2")
+- [x] MainMenu.PlayGame/PlaySetUp/PlayNineButtonPressed/PlayNine are the only ways a game starts from Menu2 (DifficultySelect/MainMenu2 paths?); loading "Main" directly via SceneManager.LoadScene skips nothing essential that PlaySetUp does
+- [x] ProgressManager.m_bank is a field (ACCESS-GUESS, read by reflection); MoveAndHitController.m_fpsInput field name; PanelManager.m_clubSwingPanel is a field and ClubSwing/FirstPersonCharacterInput/FirstPersonCharacterLookInput are Behaviours
+- [x] ECM2.Character.SetMovementDirection(Vector3) exists (not in the game map; used by reflection to stop walking when pause disables input; skipped if missing)
+- [x] ScoreCardSave kind (struct vs class) and that JsonUtility round-trips RunSave/UnlocksSave/ScoreCardSave structs
+- [x] GameMode has exactly Story and JustGolf (mapped by name, not by number); GameModeState is a single shared ScriptableObject asset found via SaveManager.m_gamemodeState
+- [?] CREDITS has no SaveManager and ends by loading Menu2 (or INTRO) itself; whether the true ending loads Main (T; runtime: whether CREDITS has a SaveManager)
+- [!] Whether anything else sets Time.timeScale = 0 that must stay frozen in session (spec 11.18); game saving on application quit (11.21) is covered by the fence (see answers: only OpenMenu and the debug screenshotter; no save on quit)
+- [x] SaveableObject.GetSaveData() has no side effects (called on every saveable during host capture)
+- [?] Whether Steam Cloud can replace save files mid-session (restore would move the cloud copy aside as .changed-during-session) (runtime: Steam Auto-Cloud syncs at launch/exit)
+- [x] LoadNewChallengeSet(ChallengeSet,int) sets m_mainChallengeSet for main sets, and m_mainChallengeSet is kept while a bounty is active
+- [!] CompleteChallenge(Challenge) on the active main challenge advances the index and runs functionOnComplete; what it does for a challenge that is not active (fixed: catch-up calls RefreshChallenges(false) between completions and lifts the streak gate for the call)
+- [!] ChallengeSystem has GetChallengeSet or m_allChallenges (fallback is Resources.FindObjectsOfTypeAll), and isBounty / m_shortString exist on ChallengeSet (fixed: challenge sets looked up in public GreatConnector.instance.m_allChallenges)
+- [x] m_completedBounties holds names compatible with GameIds.ChallengeSetName (clean vs raw)
+- [x] the LMUGC challenge set field name (LMUGCChallenge) and the isInLMUGC flag
+- [x] SaveableObject GetSaveData uses activeSelf, and whether its rotation is world or local space
+- [!] which SaveableObjects bounties/challenges toggle, and that ElevatorManager.m_bunker is the only per-view one (fixed: Elevator.m_bunker through GreatConnector.instance.m_elevator; the full survey is a runtime check)
+- [!] InteractionType values map to CollectCash / FindMissingBall / Pickup / Purchase, and m_cashValue is the price/value used (fixed: InteractionType 0..21; FindMissingBall pays 1000; the LMUGC ticket is a purchase)
+- [x] Bank.ChangeBalance(int,bool,bool) updates m_balance synchronously and the meaning of its two bools
+- [!] m_ironUnlocked corresponds to PanelManager.m_clubPanel.Unlock(bool), and m_aimUnlocked to UnlockAdjust (fixed: club panel goes with the putter (#37))
+- [!] unlock methods (UnlockStance, UnlockPractice, UnlockAdjust, Spin, StartWind, CheckRFIDDoors) tolerate the field already being set (fixed: StartWind and ObjectStates Set*Available run at most once per world when a replay causes them)
+- [!] DialogueManager: the replicate method list, the ReturnLuke* names, and whether DeductMoney/ReturnMoney have side effects beyond money (fixed: Replicate list taken from the decompile; DeductMoney/ReturnMoney only change money and stay host-only)
+- [!] TryTrueEnding, LukeVideo.OnTriggerEnter(Collider) and TeleportManager.FadeDownEnding are the only ending entry points (fixed: remote visuals have no colliders; the host's Luke trigger ignores NGGMP objects; EndLukeFadeDown/LukeLeaveSequence host-only)
+- [x] the type of Authenticator.code (string) and that m_text shows it
+- [x] TriviaBoard.ShuffleButtons uses only UnityEngine.Random
+- [x] callers of SaveManager.UnlockNewBall (return bool) and that the host can call it on a client's behalf
+- [x] SteamManager.UnlockAchievement(AchievementID) and SaveManager.AchievementsRetroUnlock signatures
+- [x] SetGates(string,bool), OpenDoor(string), OpenOrCloseSlidingDoor(bool,string), BunkerTerminal.SetScreenOpen, ServerCut/ServerRestore signatures
+- [x] the race on lmugcStart* purchases (two clients buying at once; ri only increases)
+- [x] the easy-mode bounty reward (GetDifficultyValue) used when the host pays a client's bounty
+- [?] spec section 11 open items relevant to Progression (runtime)
+- [x] LoadRunSave / LoadStoryRun / LoadNormalGolfRun / GetBackUpStorySave: do they assign SaveManager.m_run themselves or does the caller (injection sets both)?
+- [x] run2.txt / actuallyNormal.txt format: plain JsonUtility JSON or CompressSave/EncodeDecode (the sandbox copy read by SaveReader in CREDITS)
+- [!] Does the game write save files anywhere besides WriteSave, SafeWrite, SaveUnlocks, AddScoreToCard, DeleteRun/DeleteEverything, CreateBackupOfSave, UpgradeDemoSave (other classes, quit handlers, SaveReader)? Does it save on application quit? (see answers (#31): no save on quit)
+- [x] SetUpScene runs only in Main; which rotation space it applies to m_savedObjects; does it use gameObject.SetActive
+- [x] MainMenu.Start calls LoadRunSave and forces Story; does its postfix run reliably on every Menu2 load (settle point and fence drop); what PlayGame does for a new game (DeleteRun, DifficultySelect)
+- [!] PauseMenu.RestartFromHole1: does it reload Main (see answers: no reload)
+- [!] Pause menu: a PauseMenu component is findable (FindAnyObjectByType) exactly while the menu is open; cursor unlocked while open (close detection uses both); PauseMenu.Exit is the normal close path (fixed: settings submenu counts as paused)
+- [!] Anything else that sets Time.timeScale = 0 (SettingsMenu, Screenshotter, others) (fixed: the freeze source is the debug screenshotter)
+- [x] ECM2.Character.SetMovementDirection(Vector3) exists (Lifecycle calls it reflectively to stop a walk on pause; not in the game map)
+- [?] FirstPersonCharacterLookInput sits on MoveAndHitController.m_FPSController; m_fpsInput and PanelManager.m_clubSwingPanel are Behaviours that can be disabled safely (runtime: scene data; harness 'check lookinput')
+- [x] ProgressManager.m_bank access and Bank.m_balance as the live purse used in the bundle capture
+- [x] Price of BuyClub / Buy* interactions: FPSInteractable.m_cashValue?
+- [x] Bounty reward on easy mode (completedOnEasy): the same BountyBalancer.GetDifficultyValue(difficulty)?
+- [!] rb applier mapping: m_aimUnlocked <-> ProgressManager.UnlockAdjust; m_clubPanel.Unlock <-> m_ironUnlocked (fixed: putter (#37))
+- [x] Luke1..16, EndLuke0..13, ReturnLuke*: world state (NPC placement) or presentation only
+- [x] ChallengeSystem.m_mainChallengeSet keeps its challenges' m_complete while a bounty set is loaded; LoadNewChallengeSet(set, skipToChallenge) marks earlier challenges complete
+- [!] CompleteChallenge on a bounty's final challenge calls BountyPad.Complete(true) on m_activeBountyPad (fixed (#40))
+- [?] Shop standees (m_driver, m_driverStandee, ...) are SaveableObjects (runtime (#41))
+- [x] Authenticator.m_text shows the code; InputBoard.AddInput compares against Authenticator.code
+- [x] WindPanel.WindCycle start sites and what m_desiredWind drives
+- [!] LMUGC.CompleteHole id format (hole = last number in id); Ball.m_currentShot base (0 or 1) (fixed: first number, 0-based)
+- [!] ClubSwing.m_power scale (Presence shows values <= 1.5 as a fraction x100) (fixed: m_power / m_currentClub.powerVisualMult)
+- [x] UnlockNewBall callers and the meaning of its return value
+- [x] GameMode order (Story = 0, JustGolf = 1) and ControlMode order (Golf, Walk)
+- [?] Cosmetics.instance.m_balls[i].mat and the ball material's shader properties (_BaseColor/_BaseMap vs _Color/_MainTex) for avatar tint and ghost skins (runtime: _BaseColor first, then _Color, logged; harness 'check materials')
+- [?] HitManager.instance.m_ball.m_meshRenderer.sharedMaterial is a pipeline-correct lit material usable for avatars (runtime: harness 'check materials')
+- [x] IMGUI buttons (Menu2 bottom-left Multiplayer button, pause-menu Multiplayer button, waiting panel) do not overlap or get hidden by the game's own Menu2 / pause canvases
+- [x] AchievementID is top-level or nested in SteamManager, and SteamManager.UnlockAchievement has exactly one overload with one parameter (looked up by name and parameter count)
+- [x] ControlMode has a member named exactly 'Golf' and MoveAndHitController.m_mode is that enum type (compared through Enum.Parse)
+- [x] SaveManager.SaveRun snapshots m_run and the bank synchronously before the WriteSave coroutine starts, and two overlapping WriteSave coroutines are safe (host save scheduling, refund save)
+- [x] WriteSave waiting on m_moveLocked: the host save is postponed while it is set
+- [!] LMUGCTicket, crowbar and card pickups never change the bank (the arbiter refuses money reports for Pickup) (fixed: the ticket is a purchase; the crowbar is a free pickup; GetCard is not arbitrated)
+- [x] A shop purchase makes exactly one negative Bank.ChangeBalance during Interact or its short tail
+- [!] The AddScoreToCard(int) score is a round total in -200..999, and calling it on the host for a client's round edits the scorecard list as intended (fixed: totals are >= 9; the host loads GetScoreCardSave when its scores list is null)
+- [!] LMUGC.FinishChallenge writes m_run.lmugcScoreBest and lmugcScoreNoAssistBest itself, after the game's own comparison of which score is better (fixed: the best-score report moved around LMUGC.CompleteHole with the game's rule)
+- [!] Calling ChallengeSystem.CompleteChallenge repeatedly on the active main challenge advances one step each time within a set (used for multi-step catch-up) (fixed: RefreshChallenges(false) between completions, finished sets loaded at their last challenge)
+- [x] A change of challenge set through CompleteChallenge triggers dialogues or story events (why a set change uses LoadNewChallengeSet instead)
+- [!] m_challengeSetLoaded / m_mainChallengeSet during an LMUGC round point to the LMUGC set (the track cannot be read there) (fixed: works either way; logs once whether the LMUGC set is a bounty (runtime confirms))
+- [!] SaveManager.DeleteRun and DeleteEverything are the only ways the player wipes the run while a pending host track exists (fixed: client SettingsMenu save deletes blocked; RunGuard covers the broken-save path)
+- [?] BepInEx plugin OnDestroy can run while the game keeps running (Teardown keeps the save-write guards in that case) (runtime: harness 'check manager')
+- [x] HarmonyX Harmony.Unpatch(MethodBase original, MethodInfo patch) and Harmony.GetPatchedMethods / Harmony.GetPatchInfo behave as used in UnpatchAllButSaveGuards
+- [?] PauseMenu is active and enabled right after PlayerPressedEscape.OpenMenu returns, and only one PauseMenu instance exists (runtime: logged; harness 'check pause')
+- [x] GetComponentsInChildren<FPSInteractable> returns the same order on every peer for the same SaveableObject (per-interactable '|n' ids)
+- [x] Story DialogueManager money methods (DeductMoney, ReturnMoney) do not call SaveRun themselves (the host now schedules one)

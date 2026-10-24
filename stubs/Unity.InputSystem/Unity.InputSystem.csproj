@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Unity.InputSystem</AssemblyName>
+    <RootNamespace>UnityEngine.InputSystem</RootNamespace>
+  </PropertyGroup>
+</Project>

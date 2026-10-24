@@ -1,0 +1,98 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <RootNamespace>NGGMultiplayer</RootNamespace>
+    <AssemblyName>NGGMultiplayer</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- When GameManagedDir holds the game's assemblies, compile against them (Unity 6 engine modules, the game's own
+       Steamworks.NET build) instead of the stand-in packages. Otherwise (cloud builds) compile against the stubs in
+       stubs/ plus the UnityEngine.Modules 2021 package, with STUB_GAME defined; such a build is never packaged.
+       GAME_ASSEMBLIES is defined in both cases: game types are always available at compile time.
+       SteamworksBinding says which Steamworks.NET the plugin references:
+         game       the game's own com.rlabrecque.steamworks.net.dll or Steamworks.NET.dll
+         firstpass  Steamworks.NET compiled into the game's Assembly-CSharp-firstpass.dll (.unitypackage install)
+         standin    the NuGet package; its assembly name rarely matches what a game loads, so do not ship it.
+       Packaging passes RequireGameSteamworks=true, which fails the build on the stand-in binding, and
+       RequireGameAssemblies=true, which fails it on the stubs. -->
+  <PropertyGroup>
+    <HasGameAssemblies Condition="Exists('$(GameManagedDir)/Assembly-CSharp.dll')">true</HasGameAssemblies>
+    <GameSteamworksPath Condition="Exists('$(GameManagedDir)/com.rlabrecque.steamworks.net.dll')">$(GameManagedDir)/com.rlabrecque.steamworks.net.dll</GameSteamworksPath>
+    <GameSteamworksPath Condition="'$(GameSteamworksPath)' == '' And Exists('$(GameManagedDir)/Steamworks.NET.dll')">$(GameManagedDir)/Steamworks.NET.dll</GameSteamworksPath>
+    <_GameFirstpassPath Condition="'$(HasGameAssemblies)' == 'true' And '$(GameSteamworksPath)' == '' And Exists('$(GameManagedDir)/Assembly-CSharp-firstpass.dll')">$(GameManagedDir)/Assembly-CSharp-firstpass.dll</_GameFirstpassPath>
+    <!-- Type names are plain ASCII in the metadata string heap, so a text search finds them in the binary. -->
+    <SteamworksInFirstpass Condition="'$(_GameFirstpassPath)' != ''">$([System.IO.File]::ReadAllText('$(_GameFirstpassPath)').Contains('SteamNetworkingMessages'))</SteamworksInFirstpass>
+    <SteamworksBinding Condition="'$(GameSteamworksPath)' != ''">game</SteamworksBinding>
+    <SteamworksBinding Condition="'$(SteamworksBinding)' == '' And '$(SteamworksInFirstpass)' == 'True'">firstpass</SteamworksBinding>
+    <SteamworksBinding Condition="'$(SteamworksBinding)' == ''">standin</SteamworksBinding>
+    <UseGameStubs Condition="'$(HasGameAssemblies)' != 'true'">true</UseGameStubs>
+    <DefineConstants>$(DefineConstants);GAME_ASSEMBLIES</DefineConstants>
+    <DefineConstants Condition="'$(UseGameStubs)' == 'true'">$(DefineConstants);STUB_GAME</DefineConstants>
+    <_StubsDir>$(MSBuildThisFileDirectory)../../stubs/</_StubsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" PrivateAssets="all" IncludeAssets="compile"
+                      Condition="'$(UseGameStubs)' == 'true'" />
+    <PackageReference Include="Steamworks.NET" Version="2024.8.0" PrivateAssets="all" IncludeAssets="compile"
+                      Condition="'$(SteamworksBinding)' == 'standin'" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NGGMultiplayer.Core\NGGMultiplayer.Core.csproj" />
+    <Reference Include="BepInEx"><HintPath>..\..\lib\BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>..\..\lib\0Harmony.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(GameSteamworksPath)' != ''">
+    <Reference Include="$([System.IO.Path]::GetFileNameWithoutExtension('$(GameSteamworksPath)'))">
+      <HintPath>$(GameSteamworksPath)</HintPath><Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <!-- Real game: every reference comes from the game's Managed folder and is never copied to the output. -->
+  <ItemGroup Condition="'$(HasGameAssemblies)' == 'true'">
+    <Reference Include="Assembly-CSharp"><HintPath>$(GameManagedDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Assembly-CSharp-firstpass" Condition="Exists('$(GameManagedDir)/Assembly-CSharp-firstpass.dll')">
+      <HintPath>$(GameManagedDir)/Assembly-CSharp-firstpass.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="ECM2"><HintPath>$(GameManagedDir)/ECM2.dll</HintPath><Private>false</Private></Reference>
+    <!-- Unity 6 engine: the UnityEngine facade plus every module (replaces the UnityEngine.Modules 2021 package). -->
+    <Reference Include="$(GameManagedDir)/UnityEngine.dll;$(GameManagedDir)/UnityEngine.*Module.dll"><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI" Condition="Exists('$(GameManagedDir)/UnityEngine.UI.dll')">
+      <HintPath>$(GameManagedDir)/UnityEngine.UI.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro" Condition="Exists('$(GameManagedDir)/Unity.TextMeshPro.dll')">
+      <HintPath>$(GameManagedDir)/Unity.TextMeshPro.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.InputSystem" Condition="Exists('$(GameManagedDir)/Unity.InputSystem.dll')">
+      <HintPath>$(GameManagedDir)/Unity.InputSystem.dll</HintPath><Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <!-- Cloud build: compile against the stubs. Private=false keeps them out of the output, so they can never be
+       copied or packaged; the stub projects are built through these references (no solution entry needed). -->
+  <ItemGroup Condition="'$(UseGameStubs)' == 'true'">
+    <ProjectReference Include="$(_StubsDir)Assembly-CSharp/Assembly-CSharp.csproj" Private="false" ReferenceOutputAssembly="true" />
+    <ProjectReference Include="$(_StubsDir)ECM2/ECM2.csproj" Private="false" ReferenceOutputAssembly="true" />
+    <ProjectReference Include="$(_StubsDir)UnityEngine.UI/UnityEngine.UI.csproj" Private="false" ReferenceOutputAssembly="true" />
+    <ProjectReference Include="$(_StubsDir)Unity.TextMeshPro/Unity.TextMeshPro.csproj" Private="false" ReferenceOutputAssembly="true" />
+    <ProjectReference Include="$(_StubsDir)Unity.InputSystem/Unity.InputSystem.csproj" Private="false" ReferenceOutputAssembly="true" />
+    <!-- Marker the packaging scripts look for in NGGMultiplayer.dll. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>NGGMultiplayer.BuildKind</_Parameter1>
+      <_Parameter2>NGGMP_STUB_GAME_BUILD</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <Target Name="ReportSteamworksBinding" BeforeTargets="CoreCompile">
+    <Message Importance="high" Condition="'$(UseGameStubs)' == 'true'" Text="NGGMultiplayer: game references = stubs (STUB_GAME build, not for release)" />
+    <Message Importance="high" Condition="'$(HasGameAssemblies)' == 'true'" Text="NGGMultiplayer: game references = $(GameManagedDir)" />
+    <Message Importance="high" Text="NGGMultiplayer: Steamworks.NET binding = $(SteamworksBinding)" />
+    <Error Condition="'$(RequireGameAssemblies)' == 'true' And '$(UseGameStubs)' == 'true'"
+           Text="No game assemblies were found in GameManagedDir ('$(GameManagedDir)'), so this build would compile against the stubs in stubs/ (STUB_GAME). Stub builds are for compile checks only and are never packaged. Pass -p:GameManagedDir=&lt;game&gt;_Data/Managed (or copy the game's DLLs to lib/game/)." />
+    <Error Condition="'$(HasGameAssemblies)' == 'true' And !Exists('$(GameManagedDir)/ECM2.dll')"
+           Text="GameManagedDir ('$(GameManagedDir)') has Assembly-CSharp.dll but no ECM2.dll. Point it at the game's complete Managed folder." />
+    <Error Condition="'$(HasGameAssemblies)' == 'true' And !Exists('$(GameManagedDir)/UnityEngine.CoreModule.dll')"
+           Text="GameManagedDir ('$(GameManagedDir)') has Assembly-CSharp.dll but no UnityEngine.CoreModule.dll. Point it at the game's complete Managed folder." />
+    <Error Condition="'$(RequireGameSteamworks)' == 'true' And '$(SteamworksBinding)' == 'standin'"
+           Text="No game Steamworks.NET was found in GameManagedDir ('$(GameManagedDir)'). A build against the NuGet stand-in binds to the assembly name 'Steamworks.NET', which the game most likely does not ship, so the plugin would fail to load. Pass -p:GameManagedDir=&lt;game&gt;_Data/Managed (or copy the game's DLLs to lib/game/), or package with --allow-standin-steamworks for a test build." />
+  </Target>
+</Project>

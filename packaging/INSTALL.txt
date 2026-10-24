@@ -1,0 +1,90 @@
+NGG Multiplayer 1.0.0 - co-op mod for Normal Golf Game
+=======================================================
+
+What is in this zip
+-------------------
+- BepInEx 5.4.23.2 (x64), the mod loader.
+- winhttp.dll from UnityDoorstop 4.6.0. The one in the stock BepInEx zip (4.3.0) crashes this
+  game (Unity 6), so use this one.
+- BepInEx\plugins\NGGMultiplayer: the mod.
+
+Both players need: their own copy of Normal Golf Game on Steam, and this same mod version.
+
+
+Install
+-------
+1. In Steam: right-click Normal Golf Game > Manage > Browse local files. That opens
+   ...\steamapps\common\Normal Golf Game\  ; go into the "Normal" folder, the one with
+   "Normal Golf Game.exe" in it.
+2. Unzip everything from this zip into that Normal folder, so winhttp.dll, doorstop_config.ini
+   and the BepInEx folder sit right next to "Normal Golf Game.exe".
+3. Start the game from Steam as usual. The first start takes a little longer (BepInEx sets
+   itself up and writes BepInEx\config\ngg.multiplayer.cfg).
+
+If the main menu shows a "Multiplayer" panel with "Host Game" and "Join Game", it works.
+
+Updating from an older version: delete BepInEx\plugins\NGGMultiplayer first, then unzip.
+
+
+Playing together (Steam, the normal way)
+----------------------------------------
+Host:
+- Main menu > Host Game. Pick "Who Can Join" (Friends, Invite Only or Public) and the number of
+  players, then Play (your story save) or Just Play Nine.
+- Already in your world? Pause menu > Multiplayer > Host This Game > Start Hosting.
+- Invite your friend: pause menu > Invite Friends (or the Steam overlay).
+
+Friend:
+- Accept the Steam invite, or use Join Game in the main menu and pick the host's game from the
+  list (Refresh if it is not there yet).
+- You follow the host into their world automatically.
+
+Saves:
+- The host's save is the session's save: progress, unlocks, opened doors and the bank are shared
+  and saved on the host only.
+- The friend's own save is never changed. The mod also keeps a backup of it in
+  BepInEx\cache\NGGMultiplayer\LocalBackup\ before joining.
+
+Leaving: pause menu > Multiplayer > Leave Session (the host: End Session).
+Character: Male or Female, with the Character selector on the multiplayer screens.
+Other keys: F7 opens the mod's small multiplayer window, hold H for the shared round scorecard.
+
+
+Playing over IP (for testing)
+-----------------------------
+For when Steam lobbies are not an option. Start the game once after installing, quit, then edit
+BepInEx\config\ngg.multiplayer.cfg with Notepad, in the [Network] section:
+
+  Host:    Transport = Direct
+           HostAddress = 0.0.0.0
+           DirectPort = 27250
+
+  Friend:  Transport = Direct
+           HostAddress = <the host's IP address, see below>
+           DirectPort = 27250
+
+Then start the game. The host clicks Host Game in the main menu as above. The friend's main-menu
+button now says "Join Direct" (the Multiplayer screen shows "Join <address>:27250"); click it.
+
+How the friend reaches the host (pick one):
+  a) Same home network (LAN): the host's local IP, like 192.168.x.x
+     (host: run "ipconfig" and use the IPv4 Address).
+  b) A VPN such as Tailscale or ZeroTier (easiest over the internet): both install it and join the
+     same network, then the friend uses the host's VPN IP (Tailscale: the 100.x.x.x address).
+  c) Port forwarding: the host forwards UDP port 27250 on their router to their PC, and the
+     friend uses the host's public IP (search "what is my ip" on the host's PC).
+
+Firewall: if Windows asks whether to allow Normal Golf Game on networks, the host must allow it
+(private networks are enough for a LAN or a VPN). The Steam install usually allowed it already.
+
+Warning: Direct has no lobby and no password. Anyone who can reach that port can join the host's
+session. Use it with a VPN, or close the port forward again when you are done.
+
+Back to normal play: set Transport = Steam again on both PCs.
+
+
+Uninstall
+---------
+Delete winhttp.dll, doorstop_config.ini, .doorstop_version and the BepInEx folder from the
+Normal folder. The game is then back to unmodded. (Optional: changelog.txt, INSTALL.txt and
+NGGMultiplayer-README.md from this zip can go too.)

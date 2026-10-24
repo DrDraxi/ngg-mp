@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);PRESENCE_MODEL_LINKED</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.6.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NGGMultiplayer.Core\NGGMultiplayer.Core.csproj" />
+  </ItemGroup>
+  <!-- Unity-free plugin sources, compiled into the tests directly (the plugin itself needs Unity and the game). -->
+  <ItemGroup>
+    <Compile Include="..\..\src\NGGMultiplayer\Game\FactTable.cs" Link="Linked\FactTable.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Game\ReplayGuard.cs" Link="Linked\ReplayGuard.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Game\GameSaveBridge.cs" Link="Linked\GameSaveBridge.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Game\GameSaveContracts.cs" Link="Linked\GameSaveContracts.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Game\Progression\Logic\*.cs" LinkBase="Linked\Progression" />
+  </ItemGroup>
+  <!-- Lifecycle module: its Unity-free logic (bundle format, follow rules, save file backup/restore). -->
+  <ItemGroup>
+    <Compile Include="..\..\src\NGGMultiplayer\Game\GameScene.cs" Link="Linked\GameScene.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Game\Lifecycle\Logic\*.cs" Link="Linked\Lifecycle\%(Filename)%(Extension)" />
+  </ItemGroup>
+  <!-- The RPC name catalogs of all three modules, checked together (GameRpcCatalogTests). -->
+  <ItemGroup>
+    <Compile Include="..\..\src\NGGMultiplayer\Game\GameMessages.cs" Link="Linked\GameMessages.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Game\Lifecycle\LifecycleRpcs.cs" Link="Linked\Lifecycle\LifecycleRpcs.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Game\Presence\PresenceNames.cs" Link="Linked\Presence\PresenceNames.cs" />
+  </ItemGroup>
+  <!-- Presence module: wire payloads, scorecard, HUD text and wind math. -->
+  <ItemGroup>
+    <Compile Include="..\..\src\NGGMultiplayer\Game\Presence\Model\*.cs" LinkBase="Linked\Presence" />
+  </ItemGroup>
+  <!-- Single-PC test harness: the bots, their wire, the command file and the save check (Testing/Logic). -->
+  <ItemGroup>
+    <Compile Include="..\..\src\NGGMultiplayer\Game\GameEntityKeys.cs" Link="Linked\GameEntityKeys.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Testing\Logic\*.cs" LinkBase="Linked\Testing" />
+  </ItemGroup>
+  <!-- Multiplayer menus: the lobby list and the screen flow (Unity-free). -->
+  <ItemGroup>
+    <Compile Include="..\..\src\NGGMultiplayer\Runtime\IMultiplayerService.cs" Link="Linked\Runtime\IMultiplayerService.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Runtime\MultiplayerSettings.cs" Link="Linked\Runtime\MultiplayerSettings.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Runtime\PlayerLook.cs" Link="Linked\Runtime\PlayerLook.cs" />
+    <Compile Include="..\..\src\NGGMultiplayer\Runtime\Lobbies\*.cs" LinkBase="Linked\Runtime\Lobbies" />
+    <Compile Include="..\..\src\NGGMultiplayer\UI\Native\Logic\*.cs" LinkBase="Linked\UI" />
+  </ItemGroup>
+</Project>

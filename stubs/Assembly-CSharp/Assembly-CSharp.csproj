@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Assembly-CSharp</AssemblyName>
+    <RootNamespace />
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ECM2\ECM2.csproj" Private="false" />
+    <ProjectReference Include="..\UnityEngine.UI\UnityEngine.UI.csproj" Private="false" />
+    <ProjectReference Include="..\Unity.TextMeshPro\Unity.TextMeshPro.csproj" Private="false" />
+    <ProjectReference Include="..\Unity.InputSystem\Unity.InputSystem.csproj" Private="false" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ECM2</AssemblyName>
+    <RootNamespace>ECM2</RootNamespace>
+  </PropertyGroup>
+</Project>

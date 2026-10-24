@@ -1,0 +1,21 @@
+<Project>
+  <!-- Compile-time stand-ins for the game's assemblies, used only when GameManagedDir has no real Assembly-CSharp.dll.
+       They declare the members documented in docs/gamemap with throwing bodies and must never be shipped or loaded. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <!-- The game's assemblies are version 0.0.0.0; match it so a plugin built against stubs binds like the real one. -->
+    <Version>0.0.0</Version>
+    <AssemblyVersion>0.0.0.0</AssemblyVersion>
+    <FileVersion>0.0.0.0</FileVersion>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <Deterministic>true</Deterministic>
+    <!-- Unassigned / unused fields, hidden members and obsolete-style noise are expected in declaration-only stubs. -->
+    <NoWarn>$(NoWarn);CS0649;CS0169;CS0414;CS0067;CS0108;CS0114;CS1591;CS8618</NoWarn>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" PrivateAssets="all" IncludeAssets="compile" />
+  </ItemGroup>
+</Project>

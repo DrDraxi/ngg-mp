@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Unity.TextMeshPro</AssemblyName>
+    <RootNamespace>TMPro</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UnityEngine.UI\UnityEngine.UI.csproj" Private="false" />
+  </ItemGroup>
+</Project>
