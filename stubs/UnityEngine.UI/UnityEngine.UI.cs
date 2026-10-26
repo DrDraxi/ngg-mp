@@ -61,6 +61,7 @@ namespace UnityEngine.UI
         public virtual Color color { get { throw null; } set { throw null; } }
         public RectTransform rectTransform { get { throw null; } }
         public virtual bool raycastTarget { get { throw null; } set { throw null; } }
+        public virtual Material material { get { throw null; } set { throw null; } }
     }
 
     public abstract class MaskableGraphic : Graphic

@@ -96,12 +96,25 @@ namespace NGGMultiplayer.Tests.GamePresence
         }
 
         [Fact]
-        public void ManualPickUp_CountsOneMore_CappedByTheLimit()
+        public void ManualPickUp_CountsOneMore_AtLeastParPlusTwo()
+        {
+            // Hole 1 is a par 4: picking up on the tee counts 6, not a hole in one.
+            var match = NewMatch(players: new[] { Host, Alice });
+            Assert.True(match.PickUp(Host));
+            Assert.Equal(6, match.HoleScore(match.Get(Host), 1));
+            match.ReportStroke(Alice, 1, 6, 3f, false);
+            Assert.True(match.PickUp(Alice));
+            Assert.Equal(7, match.HoleScore(match.Get(Alice), 1));
+            Assert.True(match.HoleComplete);
+        }
+
+        [Fact]
+        public void ManualPickUp_CappedByTheLimit()
         {
             var match = NewMatch(maxStrokes: 5, players: new[] { Host, Alice });
             match.ReportStroke(Host, 1, 2, 40f, false);
             Assert.True(match.PickUp(Host));
-            Assert.Equal(3, match.HoleScore(match.Get(Host), 1));
+            Assert.Equal(5, match.HoleScore(match.Get(Host), 1));
             match.ReportStroke(Alice, 1, 4, 3f, false);
             Assert.True(match.PickUp(Alice));
             Assert.Equal(5, match.HoleScore(match.Get(Alice), 1));

@@ -98,9 +98,11 @@ namespace NGGMultiplayer.Testing
             if (interactable == null)
                 return "the ball's InteractableBall has no FPSInteractable";
             int before = ball.m_currentShot;
+            bool hit = ball.m_ballHit;
             interactable.Interact();
+            string game = hit ? "by the game" : "by the game: m_ballHit False, it counts a Next Shot only after a swing";
             return "Next Shot: shot " + before + " -> " + ball.m_currentShot +
-                   (ball.m_currentShot == before ? " (refused: " + (sync.LocalMayPlay ? "by the game" : sync.WaitReason()) + ")" : string.Empty);
+                   (ball.m_currentShot == before ? " (refused: " + (sync.LocalMayPlay ? game : sync.WaitReason()) + ")" : string.Empty);
         }
 
         /// <summary>Drops the ball in the cup of the hole the game is on, as if it rolled in.</summary>
@@ -135,7 +137,13 @@ namespace NGGMultiplayer.Testing
             var collider = ball.GetComponent<Collider>() ?? ball.GetComponentInChildren<Collider>();
             if (collider == null)
                 return "the ball has no collider";
+            // At -1 the ball waits on the tee for its "Next Shot": no stroke yet, and the game would score the hole 0
+            // (left unscored) yet still move on to the next tee.
+            if (ball.m_currentShot < 0)
+                return "no stroke on hole " + hole + " yet (shot " + ball.m_currentShot + "): 'match resume' first; " + Status(sync);
             int strokes = ball.m_currentShot + 1;
+            // A ball only drops after a swing, which sets m_ballHit; the next tee's "Next Shot" counts a stroke only then.
+            ball.m_ballHit = true;
             var body = ball.m_rb;
             if (body != null && !body.isKinematic)
                 Compat.SetVelocity(body, Vector3.zero);

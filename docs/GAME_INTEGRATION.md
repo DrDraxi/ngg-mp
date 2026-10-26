@@ -840,10 +840,10 @@ par. Story (the LMUGC terminal in the campaign) stays co-op as in 7.7. Game fact
   ball's "Next Shot" (`FPSInteractable.Interact` with `ContinueShot`) and `LMUGC.RetakeShot` (practice swings
   pass), with a notice.
 - **Holes.** `CompleteHole` reports a holed ball. `[Match] MaxStrokes` (default 10, 0 = no limit, at most 30) picks a
-  player up: the hole counts as the limit. The harness and the scorecard offer a manual pick-up (strokes + 1).
-  When every player is done the host waits 4 s (`HoleBreakSeconds`) and advances. The game moves the ball to the
-  next tee on its own once the player leaves golf mode: the `TeleportBallToHole(hole, false)` prefix holds that
-  until the match reaches that hole, then releases it.
+  player up: the hole counts as the limit. The harness has a manual pick-up (`match pickup`; strokes + 1, at least
+  par + 2, at most the limit). When every player is done the host waits 4 s (`HoleBreakSeconds`) and advances. The
+  game moves the ball to the next tee on its own once the player leaves golf mode: the `TeleportBallToHole(hole,
+  false)` prefix holds that until the match reaches that hole, then releases it.
 - **Catch-up.** A peer whose game is behind the match (a pick-up, a late join, a reload) gets the match's scores
   written into `m_run.lmugcScore`, `UpdateScoreCard`, and `TeleportBallToHole(target, true)`; after hole 9
   `CompleteNormalGolfRound`. Late joiners start on the current hole; holes they missed count par + 2 (the game's
@@ -853,7 +853,8 @@ par. Story (the LMUGC terminal in the campaign) stays co-op as in 7.7. Game fact
   nobody is left, or when the host leaves the nine holes.
 - **Scores and the save.** Each game still records its own round (the host's in the host save, 7.7); money,
   unlocks and clubs are untouched.
-- **HUD.** A turn banner (the game's orange "Multihit Retry" banner, green on your shot), the group scorecard in
+- **HUD.** A turn banner (the game's orange striped "Multihit Retry" banner, green on your shot; top centre while
+  walking, inside the swing panel in golf view, hidden while the shot map covers it), the group scorecard in
   the game's 9-slice style (held scorecard key, shown during the hole break and for 20 s after the round), the
   player list as a leaderboard, and the game's reminder line replaced by "Bob's turn" / "Waiting for ...". The
   IMGUI card of 7.7 is not drawn while the native card is shown.

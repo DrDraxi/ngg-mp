@@ -44,6 +44,10 @@ namespace NGGMultiplayer.Game.Presence
         private int _heldHole = -1;
         private bool _bypass;
         private uint _startedFor;
+        /// <summary>The match whose round this game already ended and recorded (its own hole 9, or the catch-up).</summary>
+        private uint _finishedFor;
+        /// <summary>The game's reminder line shows the match's text (to hand back once the match is over).</summary>
+        private bool _reminderShown;
         private double _startTriedAt = double.NegativeInfinity;
         private double _lastNotice = double.NegativeInfinity;
         private uint _lastSeenMatch;
@@ -102,6 +106,7 @@ namespace NGGMultiplayer.Game.Presence
             _advanceAt = double.NaN;
             _heldHole = -1;
             _startedFor = 0;
+            _finishedFor = 0;
             _lastSeenMatch = 0;
             _lastTurn = PeerId.None;
             _lastHole = 0;
@@ -168,7 +173,7 @@ namespace NGGMultiplayer.Game.Presence
                     names.Add(_context.PlayerName(player.Id));
             }
             if (names.Count == 0)
-                return "Hole " + _match.Hole + " done. Next hole soon";
+                return "Hole " + _match.Hole + " done. Next tee coming up";
             return "Waiting for " + MatchText.JoinNames(names) + " to finish hole " + _match.Hole;
         }
 
@@ -234,6 +239,9 @@ namespace NGGMultiplayer.Game.Presence
 
             // A round of this game's own that is ahead of the match (an old side-by-side round) starts over with it.
             bool ahead = run.isInLMUGC && _startedFor != _match.MatchId && GameHole(run) > _match.Hole;
+            // Holed out on 9 first: the game ended and recorded its round at once; the others still play hole 9.
+            if (!run.isInLMUGC && _finishedFor == _match.MatchId)
+                return;
             if (_match.Phase == MatchPhase.Playing && (!run.isInLMUGC || ahead))
             {
                 // Join the round: once per match, retried while the game refuses (dialogue, loading).
@@ -249,6 +257,10 @@ namespace NGGMultiplayer.Game.Presence
             }
             if (!run.isInLMUGC)
                 return;
+            // A round this game started itself (the player pressed the machine) at or behind the match is the match's
+            // round: once adopted, finishing a hole before the others is no longer "ahead".
+            if (_match.Phase == MatchPhase.Playing && _startedFor != _match.MatchId)
+                _startedFor = _match.MatchId;
 
             int gameHole = GameHole(run);
             int target = _match.Phase == MatchPhase.Finished ? MatchState.Holes + 1 : _match.Hole;
@@ -286,6 +298,7 @@ namespace NGGMultiplayer.Game.Presence
             if (target > MatchState.Holes)
             {
                 _context.Info($"{Log}Round over; the game records it.");
+                _finishedFor = _match.MatchId;
                 Bypass(() => lmugc.CompleteNormalGolfRound());
             }
             else
@@ -710,8 +723,14 @@ namespace NGGMultiplayer.Game.Presence
             {
                 var save = SaveManager.instance;
                 var scores = save != null ? save.m_run.lmugcScore : null;
-                if (scores == null || scores.Length < MatchState.Holes || scores[MatchState.Holes - 1] > 0)
+                if (scores == null || scores.Length < MatchState.Holes)
                     return;
+                if (scores[MatchState.Holes - 1] > 0)
+                {
+                    // The game's own end of hole 9: this round is done and recorded, whatever the others still play.
+                    self._finishedFor = self._match.MatchId;
+                    return;
+                }
                 // Ended before hole 9 (pause menu "Restart From Hole 1"): this player retires from the match.
                 if (context.IsHost)
                 {
@@ -732,18 +751,33 @@ namespace NGGMultiplayer.Game.Presence
         private static void UpdatePostfix()
         {
             var self = Active(out var context);
-            if (self == null || !self.LocalInMatch)
+            if (self == null)
                 return;
             try
             {
-                var reminder = ChallengeSystem.instance != null ? ChallengeSystem.instance.m_challengeReminder : null;
+                var challenges = ChallengeSystem.instance;
+                var reminder = challenges != null ? challenges.m_challengeReminder : null;
                 if (reminder == null)
                     return;
+                if (!self.LocalInMatch)
+                {
+                    // Over (or this player is out): ChallengeSystem.Update writes the reminder only when its last line
+                    // changes, so forget that line and the game's own ("Press button to start round") comes back.
+                    if (self._reminderShown)
+                    {
+                        self._reminderShown = false;
+                        challenges.m_previousString = null;
+                    }
+                    return;
+                }
                 // The ball sits in the cup (hidden), so the game would say "Ball in water".
                 if (self._heldHole > 0 || self.LocalPlayer.IsDone(self._match.Hole))
                     reminder.SetString(self.WaitingForOthersText());
                 else if (!self.LocalMayPlay)
                     reminder.SetString(self.WaitReason());
+                else
+                    return;
+                self._reminderShown = true;
             }
             catch (Exception e)
             {

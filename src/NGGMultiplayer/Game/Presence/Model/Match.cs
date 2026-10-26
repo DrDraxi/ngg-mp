@@ -256,7 +256,8 @@ namespace NGGMultiplayer.Game.Presence
 
         /// <summary>
         /// Host: a player picks up on the current hole (they gave up on it, or their game cannot play it on): scored as
-        /// their strokes so far + 1, at most the stroke limit.
+        /// their strokes so far + 1 but at least par + 2 (like a missed hole; picking up on the tee is no hole in one),
+        /// at most the stroke limit.
         /// </summary>
         public bool PickUp(PeerId id)
         {
@@ -264,7 +265,7 @@ namespace NGGMultiplayer.Game.Presence
             if (Phase != MatchPhase.Playing || player == null || player.Left || player.IsDone(Hole))
                 return false;
             int i = Hole - 1;
-            int strokes = Math.Max(1, player.Strokes[i] + 1);
+            int strokes = Math.Max(Math.Max(1, player.Strokes[i] + 1), Par(Hole) + 2);
             if (MaxStrokes > 0)
                 strokes = Math.Min(strokes, MaxStrokes);
             player.Strokes[i] = strokes;

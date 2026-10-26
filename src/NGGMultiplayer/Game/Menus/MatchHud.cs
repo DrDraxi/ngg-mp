@@ -14,7 +14,8 @@ namespace NGGMultiplayer.Game.Menus
     /// The competitive 9-hole round's own screens, built from the game's pieces (docs/gamemap/08-justgolf.md):
     /// <list type="bullet">
     /// <item>the turn banner, a copy of the golf view's orange "Walk to the ball to continue." banner (PANEL_PIP's
-    /// Multihit Retry), top centre in both views: whose turn it is, "Your shot", who the group waits for;</item>
+    /// Multihit Retry, striped material and all), top centre in the walking view and inside the swing panel in golf
+    /// view: whose turn it is, "Your shot", who the group waits for;</item>
     /// <item>the group scorecard in the style of the round's own HUD card (PANEL_LMUGC: green heading bar, green HOLE
     /// cells, yellow PAR, score backings in the game's par / under / over colours, a green TOTAL), one row per player
     /// in leaderboard order; shown while the scorecard key is held, between holes, and as the final results.</item>
@@ -26,6 +27,7 @@ namespace NGGMultiplayer.Game.Menus
     {
         private const string Log = "[Menus] ";
         private const int SortingOrder = 22;
+        private const int GolfBannerSortingOrder = 40;
         private const float FadePerSecond = 7f;
         private const double MineBannerSeconds = 5.0;
         private const double ResultsSeconds = 20.0;
@@ -64,6 +66,14 @@ namespace NGGMultiplayer.Game.Menus
         private Image _bannerImage;
         private Color _bannerColour = Orange;
 
+        // Golf view: the same banner inside the swing panel (its world-space canvas), where the game shows "Walk to the
+        // ball to continue." on the shot map; the top centre is taken by the panels' own headings there.
+        private RectTransform _golfBanner;
+        private CanvasGroup _golfBannerGroup;
+        private TextMeshProUGUI _golfBannerText;
+        private Image _golfBannerImage;
+        private bool _pipBroken;
+
         private RectTransform _card;
         private CanvasGroup _cardGroup;
         private TextMeshProUGUI _heading;
@@ -76,6 +86,7 @@ namespace NGGMultiplayer.Game.Menus
         private Sprite _rounded;
         private Sprite _frame;
         private Sprite _hollow;
+        private Material _stripes;
         private TMP_FontAsset _font;
         private TMP_FontAsset _headingFont;
         private Material _fontMaterial;
@@ -138,6 +149,7 @@ namespace NGGMultiplayer.Game.Menus
                 scaler.matchWidthOrHeight = hudScaler != null ? hudScaler.matchWidthOrHeight : 0.5f;
 
                 BuildBanner();
+                BuildGolfBanner();
                 BuildCard();
                 _root.SetActive(true);
                 NetLog.Info($"{Log}Match banner and group scorecard added in the game's style.");
@@ -163,6 +175,14 @@ namespace NGGMultiplayer.Game.Menus
                     case "rounded9slice": _rounded = _rounded ?? sprite; break;
                     case "frame9slice": _frame = _frame ?? sprite; break;
                     case "frame9sliceHollow": _hollow = _hollow ?? sprite; break;
+                }
+            }
+            foreach (var material in Resources.FindObjectsOfTypeAll<Material>())
+            {
+                if (material != null && material.name == "DiagonalsUIWhite")
+                {
+                    _stripes = material;
+                    break;
                 }
             }
             foreach (var font in Resources.FindObjectsOfTypeAll<TMP_FontAsset>())
@@ -194,24 +214,8 @@ namespace NGGMultiplayer.Game.Menus
         private void BuildBanner()
         {
             // The golf view's orange banner, with its striped material, when it can be found.
-            Image template = null;
-            TMP_Text templateLabel = null;
-            var pip = GameObject.Find("PANEL_PIP");
-            var retry = pip != null ? MenuKit.FindDeep(pip.transform, "Multihit Retry") : null;
-            if (retry != null)
-            {
-                template = retry.GetComponent<Image>();
-                templateLabel = retry.GetComponentInChildren<TMP_Text>(true);
-            }
-            if (template != null)
-            {
-                _bannerImage = MenuKit.CloneImage(template, _root.transform, "BANNER");
-                _bannerColour = template.color;
-            }
-            else
-            {
-                _bannerImage = NewImage(_root.transform, "BANNER", _rounded, Orange);
-            }
+            var template = FindBannerTemplate(out var templateLabel);
+            _bannerImage = NewBannerImage(template, _root.transform);
             _banner = _bannerImage.rectTransform;
             _banner.anchorMin = _banner.anchorMax = _banner.pivot = new Vector2(0.5f, 1f);
             _banner.anchoredPosition = new Vector2(0f, -26f);
@@ -233,6 +237,94 @@ namespace NGGMultiplayer.Game.Menus
             _bannerText.color = Color.white;
             _bannerText.richText = true;
             _bannerText.text = string.Empty;
+        }
+
+        /// <summary>PANEL_PIP's "Multihit Retry" (inactive most of the time, so not through GameObject.Find).</summary>
+        private static Image FindBannerTemplate(out TMP_Text label)
+        {
+            label = null;
+            foreach (var image in Compat.FindAll<Image>(true))
+            {
+                if (image == null || image.name != "Multihit Retry")
+                    continue;
+                label = image.GetComponentInChildren<TMP_Text>(true);
+                return image;
+            }
+            return null;
+        }
+
+        private Image NewBannerImage(Image template, Transform parent)
+        {
+            Image image;
+            if (template != null)
+            {
+                image = MenuKit.CloneImage(template, parent, "BANNER");
+                _bannerColour = template.color;
+            }
+            else
+            {
+                image = NewImage(parent, "BANNER", _rounded, Orange);
+            }
+            if (_stripes != null)
+                image.material = _stripes;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>The swing panel's world-space canvas (PANEL_Main Controls/Canvas), or null.</summary>
+        private static Canvas FindSwingCanvas()
+        {
+            foreach (var canvas in Compat.FindAll<Canvas>(true))
+            {
+                var parent = canvas != null ? canvas.transform.parent : null;
+                if (parent != null && parent.name == "PANEL_Main Controls" && canvas.renderMode == RenderMode.WorldSpace)
+                    return canvas;
+            }
+            return null;
+        }
+
+        private void BuildGolfBanner()
+        {
+            var canvas = FindSwingCanvas();
+            if (canvas == null)
+            {
+                NetLog.Warn($"{Log}The swing panel was not found; the turn banner shows at the top in golf view too.");
+                return;
+            }
+            var template = FindBannerTemplate(out var templateLabel);
+            _golfBannerImage = NewBannerImage(template, canvas.transform);
+            _golfBannerImage.gameObject.layer = canvas.gameObject.layer;
+            _golfBanner = _golfBannerImage.rectTransform;
+            _golfBanner.SetAsLastSibling();
+            // Where the shot map shows "Walk to the ball to continue.": centred, a little below the middle, across the
+            // golfer figure (no swing is possible while it shows).
+            _golfBanner.anchorMin = _golfBanner.anchorMax = _golfBanner.pivot = new Vector2(0.5f, 0.5f);
+            _golfBanner.anchoredPosition = new Vector2(0f, -120f);
+            _golfBanner.sizeDelta = new Vector2(560f, 74f);
+            _golfBanner.localScale = Vector3.one;
+            _golfBanner.localRotation = Quaternion.identity;
+            // The golfer figure is drawn by a canvas sorted after the panel's: sort above it, but under the shot map
+            // (PANEL_PIP, 50) and the Space / multi-hit menus (100).
+            var sorting = _golfBannerImage.gameObject.AddComponent<Canvas>();
+            sorting.overrideSorting = true;
+            sorting.sortingOrder = GolfBannerSortingOrder;
+            _golfBannerGroup = _golfBannerImage.gameObject.AddComponent<CanvasGroup>();
+            _golfBannerGroup.alpha = 0f;
+            _golfBannerGroup.interactable = false;
+            _golfBannerGroup.blocksRaycasts = false;
+            _golfBannerText = templateLabel != null
+                ? MenuKit.CloneLabel(templateLabel, _golfBanner, "TEXT")
+                : NewText(_golfBanner, "TEXT", _font, 28f, Color.white, TextAlignmentOptions.Center);
+            _golfBannerText.gameObject.layer = canvas.gameObject.layer;
+            Stretch(_golfBannerText.rectTransform, new Vector2(20f, 4f));
+            _golfBannerText.renderMode = TextRenderFlags.Render;
+            _golfBannerText.enableAutoSizing = true;
+            _golfBannerText.fontSizeMin = 16f;
+            _golfBannerText.fontSizeMax = 30f;
+            _golfBannerText.alignment = TextAlignmentOptions.Center;
+            _golfBannerText.color = Color.white;
+            _golfBannerText.richText = true;
+            _golfBannerText.text = string.Empty;
         }
 
         private void BuildCard()
@@ -400,6 +492,7 @@ namespace NGGMultiplayer.Game.Menus
             if (match == null || hidden)
             {
                 Fade(_bannerGroup, 0f, dt);
+                Fade(_golfBannerGroup, 0f, dt);
                 Fade(_cardGroup, 0f, dt);
                 return;
             }
@@ -416,8 +509,18 @@ namespace NGGMultiplayer.Game.Menus
                 if (_bannerText.text != banner)
                     _bannerText.text = banner;
                 _bannerImage.color = mine ? Green : _bannerColour;
+                if (_golfBanner != null)
+                {
+                    if (_golfBannerText.text != banner)
+                        _golfBannerText.text = banner;
+                    _golfBannerImage.color = _bannerImage.color;
+                }
             }
-            Fade(_bannerGroup, banner != null ? 1f : 0f, dt);
+            // Golf view: in the swing panel, and not while the shot map covers it (the game's own banner is there then).
+            bool golf = _golfBanner != null && GolfView();
+            bool pip = golf && ShotMapShown();
+            Fade(_bannerGroup, banner != null && !golf ? 1f : 0f, dt);
+            Fade(_golfBannerGroup, banner != null && golf && !pip ? 1f : 0f, dt);
 
             // Scorecard / results.
             bool finished = match.Phase == MatchPhase.Finished;
@@ -431,6 +534,28 @@ namespace NGGMultiplayer.Game.Menus
             if (show && (match.MatchId != _shownMatch || match.Sequence != _shownSequence || results != _shownResults))
                 Fill(match, local, name, finished);
             Fade(_cardGroup, show ? 1f : 0f, dt);
+        }
+
+        private static bool GolfView()
+        {
+            var controller = MoveAndHitController.instance;
+            return controller != null && controller.m_mode == ControlMode.Golf;
+        }
+
+        private bool ShotMapShown()
+        {
+            if (_pipBroken)
+                return false;
+            try
+            {
+                return PanelAnimator.instance != null && PanelAnimator.instance.m_showPIP;
+            }
+            catch (Exception e)
+            {
+                _pipBroken = true;
+                NetLog.Warn($"{Log}Reading PanelAnimator.m_showPIP failed ({e.Message}); the golf view banner ignores the shot map.");
+                return false;
+            }
         }
 
         private static void Fade(CanvasGroup group, float target, float dt)
@@ -536,6 +661,8 @@ namespace NGGMultiplayer.Game.Menus
         {
             if (_root != null)
                 UnityEngine.Object.Destroy(_root);
+            if (_golfBanner != null)
+                UnityEngine.Object.Destroy(_golfBanner.gameObject);
             Forget();
         }
 
@@ -548,6 +675,10 @@ namespace NGGMultiplayer.Game.Menus
             _bannerGroup = null;
             _bannerText = null;
             _bannerImage = null;
+            _golfBanner = null;
+            _golfBannerGroup = null;
+            _golfBannerText = null;
+            _golfBannerImage = null;
             _card = null;
             _cardGroup = null;
             _heading = null;

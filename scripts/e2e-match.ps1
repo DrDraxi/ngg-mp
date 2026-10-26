@@ -192,6 +192,7 @@ Note "`r`n## 3. Holes"
 $seenHoles = @{}
 $pickedUp = $false
 $heldChecked = $false
+$breakShot = $false
 for ($step = 0; $step -lt $MaxSteps; $step++) {
     $hm = Status "Host"
     if (-not $hm) { Start-Sleep 2; continue }
@@ -200,14 +201,19 @@ for ($step = 0; $step -lt $MaxSteps; $step++) {
         $seenHoles[$hm.Hole] = $true
         if ($hm.Hole -gt 1) { Shot "hole$($hm.Hole)" }
     }
-    if ($hm.HoleComplete) { Start-Sleep 2; continue }
+    if ($hm.HoleComplete) {
+        # The group scorecard shows during the hole break (4 s).
+        if (-not $breakShot) { $breakShot = $true; Shot "hole$($hm.Hole)-break-card" }
+        Start-Sleep 2
+        continue
+    }
     # The copy that may play now (in turn order only one; both copies may share a player name).
     $who = $null
     $me = $null
     foreach ($w in @("Host", "Client")) { $s = Status $w; if ($s -and $s.MayPlay) { $who = $w; $me = $s; break } }
     if (-not $who) { Start-Sleep 2; continue }
     $hole = $me.Hole
-    if ($who -eq "Client" -and $hole -eq $PickUpHole -and -not $pickedUp -and $me.Cards[$hole - 1] -match "^~") {
+    if ($who -eq "Client" -and $hole -eq $PickUpHole -and -not $pickedUp -and $me.Cards[$hole - 1] -notmatch "^\d") {
         Send $who "match pickup" | Out-Null
         $pickedUp = $true
         Start-Sleep 2
@@ -227,7 +233,13 @@ for ($step = 0; $step -lt $MaxSteps; $step++) {
         Start-Sleep 9   # flight and roll; the rest report passes the turn
         if ($step -lt 6) { Shot "hole$hole-$($who.ToLowerInvariant())-shot" }
     } else {
-        Send $who "match cup" | Out-Null
+        $r = Send $who "match cup"
+        if ($r -match "no stroke on hole") {
+            # The ball still waits for its first stroke (a Next Shot the game did not count): swing it for real.
+            Send $who "shoot $Power" | Out-Null
+            Start-Sleep 9
+            continue
+        }
         Start-Sleep 2
         # Leaving golf mode lets the game move the ball to the next tee (the mod holds it until the hole is done).
         Send $who "mode walk" | Out-Null
@@ -273,7 +285,7 @@ Verdict "real save folder unchanged" $(if ($changed.Count -eq 0) { "PASS" } else
 
 $verdicts | ConvertTo-Json -Depth 3 | Set-Content (Join-Path $out "results.json") -Encoding UTF8
 Note "`r`n## Summary`r`n"
-Note "| Step | Result | Evidence |`r`n|---|---|---|"
+Add-Content $md "| Step | Result | Evidence |`r`n|---|---|---|" -Encoding UTF8
 foreach ($v in $verdicts) { Add-Content $md "| $($v.scenario) | $($v.result) | $($v.evidence -replace '\|', '/') |" -Encoding UTF8 }
 $verdicts | Format-Table -AutoSize -Wrap | Out-String | Write-Host
 Write-Host "Results and screenshots: $out"
