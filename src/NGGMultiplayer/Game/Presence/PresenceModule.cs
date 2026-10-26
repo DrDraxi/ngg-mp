@@ -41,6 +41,8 @@ namespace NGGMultiplayer.Game.Presence
 
         internal RoundSync Rounds { get; private set; }
 
+        internal MatchSync Match { get; private set; }
+
         internal PresenceRoster Roster { get; } = new PresenceRoster();
 
         internal PresenceHud Hud { get; private set; }
@@ -57,6 +59,7 @@ namespace NGGMultiplayer.Game.Presence
             Shots = new ShotEvents(context, _access, Roster);
             Wind = new WindSync(context, _access);
             Rounds = new RoundSync(context, _access);
+            Match = new MatchSync(context, _access);
             Hud = new PresenceHud(context, this);
             LookVideo = new LookVideo(context);
             Local.RoundActivity = Rounds.Activity;
@@ -68,6 +71,7 @@ namespace NGGMultiplayer.Game.Presence
             Install("shot events", Shots.Install);
             Install("wind", Wind.Install);
             Install("rounds", Rounds.Install);
+            Install("match", Match.Install);
 
             _onPlayerLeft = OnPlayerLeft;
             _onPeerReady = OnPeerReady;
@@ -108,6 +112,7 @@ namespace NGGMultiplayer.Game.Presence
             if (_context == null)
                 return;
             Local.Tick();
+            Match.Tick();
             Hud.Tick();
             LookVideo.Tick();
         }
@@ -118,6 +123,7 @@ namespace NGGMultiplayer.Game.Presence
             Shots.Reset();
             Wind.Reset();
             Rounds.Reset();
+            Match.Reset();
             Hud.Reset();
             Local.OnSessionChanged();
             Rounds.ReadPars();
@@ -129,6 +135,7 @@ namespace NGGMultiplayer.Game.Presence
             Shots.Reset();
             Wind.Reset();
             Rounds.Reset();
+            Match.Reset();
             Hud.Reset();
             Local.OnSessionChanged();
             _visuals.Clear();
@@ -226,6 +233,7 @@ namespace NGGMultiplayer.Game.Presence
                 return;
             Roster.Remove(player.Id);
             Rounds.OnPlayerLeft(player.Id);
+            Match.OnPlayerLeft(player.Id);
             _visuals.ForgetSkin(player.Id);
             _visuals.ForgetLook(player.Id);
         }
@@ -235,6 +243,7 @@ namespace NGGMultiplayer.Game.Presence
             // The newcomer hears the host's info now and everyone else's within a few seconds.
             Local.InfoSoon();
             Rounds.SendCard(peer);
+            Match.OnPeerReady(peer);
         }
 
         private void OnSceneLoaded(GameScene scene)
@@ -242,6 +251,7 @@ namespace NGGMultiplayer.Game.Presence
             Local.OnSceneLoaded();
             Wind.OnSceneLoaded();
             Rounds.OnSceneLoaded();
+            Match.OnSceneLoaded();
         }
 
         private void OnWorldLoaded()

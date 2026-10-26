@@ -544,6 +544,8 @@ namespace NGGMultiplayer.Testing
             return true;
         }
 
+        public string Match(string action) => HarnessMatch.Run(action);
+
         public string DescribeBounty()
         {
             if (!Player(out var controller, out string error))

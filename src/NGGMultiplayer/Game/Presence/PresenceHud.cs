@@ -121,7 +121,9 @@ namespace NGGMultiplayer.Game.Presence
                 if (!_context.NativePlayerListShown)
                     DrawPlayers();
                 var card = _module.Rounds.Card;
-                if (card.Count > 0 && (_keyHeld || _context.Now < _cardUntil))
+                // In a competitive round the Menus module's group scorecard replaces this one.
+                bool nativeMatch = _context.Match != null && _context.NativeMatchHudShown;
+                if (card.Count > 0 && !nativeMatch && (_keyHeld || _context.Now < _cardUntil))
                     DrawCard(card);
             }
             catch (Exception e)

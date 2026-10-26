@@ -360,6 +360,7 @@ with the harness, and `cannot ...: not in the world` in the menus.
 | `dialogue [state]` / `dialogue next` / `dialogue triggers [text]` | Dialogue / cutscene state: `moveLocked`, player mode, the DialogueManager's flags, video players playing, active dialogue triggers, `timeScale`. `next` presses the dialogue's next button. | `moveLocked True` while a dialogue or cutscene runs. |
 | `remotes` | Each remote player / ball: shown or HIDDEN, position, distance, renderers, trail and line renderers (emitting or not), and `DANGER` if one has a collider or rigidbody. | `remotes: N` ... `trails: T, drawing: D`. |
 | `player` | Local feet, facing, mode, club, the ball (hit, stroke, moving, own trail), bank. | `feet (...)`, `ball ...`. |
+| `match status\|card\|start\|resume\|cup\|pickup` | The competitive nine holes (GAME_INTEGRATION 7.8). `status`: the local round (`inLMUGC`, the game's scores, the ball's stroke and `next-shot ready`, mode, `inMatch`, `mayPlay`, `holding-next-tee`, the wait reason) and the match (`match <id> Turns Playing hole 3/9 (par 3) turn <name> seq <n>`, then one line per player: position, name, `(you)`, to par, thru, total, `[3,4,~1,-,...]`: `~n` = n strokes on the open hole, `n*` picked up, `m` missed). `card`: the match only. `start`: the round machine's StartLMUGC button (a client asks the host). `resume`: the ball's Next Shot (the turn gate applies). `cup`: drops the ball into the current hole's cup through `BallTarget.OnTriggerEnter` (scores the strokes so far + 1). `pickup`: gives up the hole. | `match 7 Turns Playing hole 1/9 (par 3) turn ...`; out of turn `resume` says `refused: <name>'s turn`. |
 
 `scripts/e2e-scenarios.ps1` plays scenarios on the two running copies of 2.7 (start them first with `scripts/e2e.ps1`,
 or pass `-Start`):
@@ -382,6 +383,12 @@ and PNGs (both windows side by side, and each one). Exit code 1 if any verdict i
 | c. different bounties | Host starts `-BountyA`, Client `-BountyB`, one stroke each. | Each keeps its own `activeBounty` before and after the stroke. |
 | d. cutscene | Host walks into the first active dialogue trigger (or a padlock; `-Cutscene`), Client walks 4 m and shoots meanwhile; then the Host's dialogue is advanced with `dialogue next`. | The Host is `moveLocked`, the Client is not and walks and shoots, and the Host is free again after. INCONCLUSIVE if no cutscene started. |
 | e. remote ball trail | The watcher stands beside the shooter, who shoots; the watcher's `remotes` is read three times during the flight. | The watcher's ghost ball has a trail renderer that draws. |
+
+`scripts/e2e-match.ps1` plays a competitive nine-hole round on both copies (start them in Just Play Nine:
+`scripts/e2e.ps1 -Nine`, or pass `-Start`): the Client presses the round machine, the copy out of turn tries to
+swing, then the copies play in the order the host gives (real shots on the first `-ShotHoles` holes, then `match
+cup`; the Client picks up on `-PickUpHole`), and both must end with the same final card. Results in
+`<TestDir>\match\<stamp>\` like the scenarios below.
 
 Then: the Client's `savecheck`, the real save folder (hashed before and after, must not change), the Client copy's
 own saves (must not change) and, for the record, which Host copy saves changed.
@@ -435,6 +442,7 @@ the host's screen **and** the client's.
 | P5b | Ghost ball trail: A takes a long drive, a putt, then resets the ball / changes hole. | On B, A's ghost draws a smooth trail in A's colour (the colour of A's avatar and name tag) shaped like B's own ball trail; it fades a moment after the ball stops; the next shot starts a fresh trail; no streak across the map on reset, hole change or after A's ball was holed. Log once: `Ghost ball trail: the game's Ball.m_trail look (...)`. `[Presence] RemoteBallTrail = false` removes it at once; `TrailSeconds` changes its length. |
 | P6 | Wind (after wind unlock). | B's wind panel shows A's wind; it does not jump when a bounty starts or ends. |
 | P7 | LMUGC / Just Golf round, both playing. | Hold H (`[General] ScorecardKey`): the shared round scorecard lists both players' holes and totals (unplayed holes count par + 2). H does nothing else in the game (`check tab`; the game binds Tab, #67). |
+| P7b | Just Play Nine, competitive (`[Match] Competitive = true`): B presses the round machine. | The round starts for both on hole 1. The turn banner says whose shot it is (green "Your shot" for you); out of turn the swing, Next Shot and Retake do nothing but a notice. After the tee shots the player farthest from the cup plays. A holed player waits ("Waiting for B to finish hole 1"); the ball goes to the next tee only when both are done (4 s break with the card shown). Honours on the next tee. Hold H: the group card (pars, both rows, colours like the game's card, totals, +/-). The player list ranks by to par. After hole 9 both show the final card and the winner line for 20 s. `[Match] TurnOrder = Free`: no turns, holes still wait. Story's LMUGC stays co-op. |
 | P8 | A opens the pause menu. | B keeps playing; A's avatar stays visible on B; A's game is not frozen for B. |
 
 ### 3.3 Progression (shared host save)

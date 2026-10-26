@@ -40,6 +40,11 @@ namespace NGGMultiplayer.Game.Menus
         private PauseButtons _pause;
         private PlayerListHud _playerList;
         private NoticeHud _notices;
+        private MatchHud _matchHud;
+        private double _nextMatchBuild;
+        private object _listMatch;
+        private uint _listMatchSequence;
+        private bool _keyBroken;
         private double _nextListBuild;
         private double _nextNoticeBuild;
         private MenuSnapshot _listSnapshot;
@@ -73,6 +78,7 @@ namespace NGGMultiplayer.Game.Menus
             _pause = new PauseButtons(Invite, OpenFromPause);
             _playerList = new PlayerListHud();
             _notices = new NoticeHud();
+            _matchHud = new MatchHud();
             _info = new GameLobbyInfo(context);
             _lobbies = context.Service as IMultiplayerLobbies;
             if (_lobbies != null)
@@ -105,6 +111,7 @@ namespace NGGMultiplayer.Game.Menus
             _dialog?.Destroy();
             _playerList?.Destroy();
             _notices?.Destroy();
+            _matchHud?.Destroy();
             if (_ctx != null)
                 _ctx.NativeNoticesShown = false;
             _ctx = null;
@@ -141,6 +148,7 @@ namespace NGGMultiplayer.Game.Menus
                 _pause.Show(_snapshot.CanInvite && _snapshot.InSession);
             TickPlayerList(ctx, now);
             TickNotices(ctx, now);
+            TickMatch(ctx, now);
 
             if (_controller.IsOpen)
                 DriveOpenScreens(ctx);
@@ -191,6 +199,9 @@ namespace NGGMultiplayer.Game.Menus
             _pause.Forget();
             _playerList.Forget();
             _notices.Forget();
+            _matchHud.Forget();
+            _nextMatchBuild = 0;
+            ctx.NativeMatchHudShown = false;
             _nextListBuild = 0;
             _nextNoticeBuild = 0;
             ctx.NativePlayerListShown = false;
@@ -235,8 +246,21 @@ namespace NGGMultiplayer.Game.Menus
                     return;
             }
             bool wanted = ctx.InSession && ctx.WorldReady && !ctx.IsLoadingWorld;
-            if (wanted && !ReferenceEquals(_listSnapshot, _snapshot))
+            var match = ctx.Match;
+            if (wanted && match != null)
             {
+                // A competitive round: the list is its leaderboard.
+                if (!ReferenceEquals(_listMatch, match) || _listMatchSequence != match.Sequence || !ReferenceEquals(_listSnapshot, _snapshot))
+                {
+                    _listMatch = match;
+                    _listMatchSequence = match.Sequence;
+                    _listSnapshot = _snapshot;
+                    _listText = Presence.MatchText.Leaderboard(match, ctx.LocalId, ctx.PlayerName);
+                }
+            }
+            else if (wanted && (!ReferenceEquals(_listSnapshot, _snapshot) || _listMatch != null))
+            {
+                _listMatch = null;
                 _listSnapshot = _snapshot;
                 _listText = PlayerListText.Build(_snapshot.Players);
             }
@@ -265,6 +289,50 @@ namespace NGGMultiplayer.Game.Menus
                     return;
             }
             _notices.Tick(ctx.IsLoadingWorld ? null : ctx.NoticeText());
+        }
+
+        /// <summary>The competitive round's turn banner and group scorecard (built once the world's HUD exists).</summary>
+        private void TickMatch(GameContext ctx, double now)
+        {
+            if (ctx.Scene != GameScene.Main)
+                return;
+            var match = ctx.Match;
+            if (!_matchHud.Built)
+            {
+                if (match == null || !ctx.WorldReady || now < _nextMatchBuild)
+                    return;
+                _nextMatchBuild = now + 1.0;
+                try
+                {
+                    ctx.NativeMatchHudShown = _matchHud.Build();
+                }
+                catch (Exception e)
+                {
+                    NetLog.Error($"{Log}Adding the match screens failed: {e}");
+                }
+                if (!_matchHud.Built)
+                    return;
+            }
+            bool hidden = !ctx.InSession || !ctx.WorldReady || ctx.IsLoadingWorld || ctx.PauseMenuOpen || _controller.IsOpen;
+            _matchHud.Tick(match, ctx.LocalId, ctx.PlayerName, now, ScorecardKeyHeld(ctx), hidden);
+        }
+
+        private bool ScorecardKeyHeld(GameContext ctx)
+        {
+            var key = ctx.ScorecardKey;
+            if (_keyBroken || key == KeyCode.None)
+                return false;
+            try
+            {
+                // HarnessInput: a test-harness `key <name>`; always false outside the harness.
+                return BepInEx.UnityInput.Current.GetKey(key) || Testing.HarnessInput.GetKey(key);
+            }
+            catch (Exception e)
+            {
+                _keyBroken = true;
+                NetLog.Warn($"{Log}Reading the scorecard key failed ({e.Message}); the group scorecard only opens between holes.");
+                return false;
+            }
         }
 
         private void OnSceneLoaded(GameScene scene)

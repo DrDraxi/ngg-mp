@@ -345,6 +345,12 @@ namespace NGGMultiplayer.Tests.Testing
         public string DescribeRemotes() => "remotes: 0";
 
         public string DescribePlayer() => "feet (0, 0, 0)";
+
+        public string Match(string action)
+        {
+            Calls.Add("match " + action);
+            return "match " + action;
+        }
     }
 
     public class HarnessPlayCommandsTests : IDisposable

@@ -10,14 +10,25 @@ namespace TMPro
         Top = 258,
         Left = 513,
         Center = 514,
-        Right = 516
+        Right = 516,
+        MidlineLeft = 4097
     }
 
     public enum FontStyles
     {
         Normal = 0,
         Bold = 1,
-        Italic = 2
+        Italic = 2,
+        UpperCase = 16
+    }
+
+    public abstract class TMP_Asset : UnityEngine.ScriptableObject
+    {
+        public UnityEngine.Material material;
+    }
+
+    public class TMP_FontAsset : TMP_Asset
+    {
     }
 
     public enum TextRenderFlags { DontRender = 0, Render = 255 }
@@ -34,6 +45,8 @@ namespace TMPro
         public bool richText { get { throw null; } set { throw null; } }
         public TextAlignmentOptions alignment { get { throw null; } set { throw null; } }
         public FontStyles fontStyle { get { throw null; } set { throw null; } }
+        public TMP_FontAsset font { get { throw null; } set { throw null; } }
+        public UnityEngine.Material fontSharedMaterial { get { throw null; } set { throw null; } }
     }
 
     public class TextMeshProUGUI : TMP_Text

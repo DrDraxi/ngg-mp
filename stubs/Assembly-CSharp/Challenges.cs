@@ -133,6 +133,8 @@ public class ChallengeReminder : MonoBehaviour
     // Sets the "You have $N" line from ProgressManager.instance.m_bank.m_balance (or the bounty count once bounties are
     // restored, where it may unlock the COMPLETE achievement). Called by FPSInteractable after pickups and purchases.
     public void UpdateBalanceReminder() { throw null; }
+    // Ignores a repeat of the last string; empty fades the line out (docs/gamemap/07-hud.md).
+    public void SetString(string s) { throw null; }
 }
 
 // TYPE-GUESS: base class MonoBehaviour.

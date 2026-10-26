@@ -11,6 +11,10 @@ namespace NGGMultiplayer.Game.Presence
         public const string Round = GameMessages.PresencePrefix + "round";
         public const string Hole = GameMessages.PresencePrefix + "hole";
         public const string Card = GameMessages.PresencePrefix + "card";
+        public const string Match = GameMessages.PresencePrefix + "match";
+        public const string MatchStroke = GameMessages.PresencePrefix + "mstroke";
+        public const string MatchStart = GameMessages.PresencePrefix + "mstart";
+        public const string MatchRetire = GameMessages.PresencePrefix + "mretire";
     }
 
     /// <summary>Patcher feature keys of the Presence module; each one fails (and is disabled) on its own.</summary>
@@ -33,5 +37,6 @@ namespace NGGMultiplayer.Game.Presence
         public const string Hud = "pr.hud";
         public const string Trail = "pr.trail";
         public const string LookVideo = "pr.lookvideo";
+        public const string Match = "pr.match";
     }
 }

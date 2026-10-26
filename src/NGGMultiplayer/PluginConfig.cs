@@ -37,6 +37,16 @@ namespace NGGMultiplayer
             TrailSeconds = file.Bind("Presence", "TrailSeconds", 0f, new ConfigDescription(
                 "How long the trail behind other players' balls lasts, in seconds. 0 matches the game's own ball trail.",
                 new AcceptableValueRange<float>(0f, 10f)));
+            Competitive = file.Bind("Match", "Competitive", true,
+                "Just Play Nine in a session is a competitive round: everyone plays the same hole, strokes count per " +
+                "player, with a leaderboard and a scorecard. Off: everyone plays the nine holes on their own. The host's " +
+                "setting applies. Story mode is always played together.");
+            TurnOrder = file.Bind("Match", "TurnOrder", Game.Presence.MatchMode.Turns,
+                "Turns: real golf, one shot at a time (best score on the last hole tees off first, then whoever is " +
+                "farthest from the cup). Free: everyone plays the hole at once; the next hole still waits for all.");
+            MaxStrokes = file.Bind("Match", "MaxStrokes", Game.MatchSettings.DefaultMaxStrokes, new ConfigDescription(
+                "Strokes on one hole after which a player picks up and scores that many. 0 = no limit.",
+                new AcceptableValueRange<int>(0, 30)));
             Character = file.Bind("Presence", "Character", PlayerLook.Male,
                 "Male or Female: the golfer other players see you as. Also the Character selector of the multiplayer screens.");
             Transport = file.Bind("Network", "Transport", TransportKind.Steam,
@@ -82,6 +92,12 @@ namespace NGGMultiplayer
         public ConfigEntry<float> TrailSeconds { get; }
 
         public ConfigEntry<PlayerLook> Character { get; }
+
+        public ConfigEntry<bool> Competitive { get; }
+
+        public ConfigEntry<Game.Presence.MatchMode> TurnOrder { get; }
+
+        public ConfigEntry<int> MaxStrokes { get; }
 
         public ConfigEntry<TransportKind> Transport { get; }
 

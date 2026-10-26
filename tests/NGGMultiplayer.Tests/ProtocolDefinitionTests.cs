@@ -60,7 +60,7 @@ namespace NGGMultiplayer.Tests
         public void ProtocolInfo_Values()
         {
             Assert.Equal(2, ProtocolInfo.Version);
-            Assert.Equal("1.0.0", ProtocolInfo.ModVersion);
+            Assert.Equal("1.1.0", ProtocolInfo.ModVersion);
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace NGGMultiplayer.Tests
             var r = new NetReader(Assert.Single(list).Data);
             Assert.Equal(MessageType.Hello, r.ReadByte());
             Assert.Equal(ProtocolInfo.Version, r.ReadInt());
-            Assert.Equal("1.0.0", r.ReadString());
+            Assert.Equal("1.1.0", r.ReadString());
         }
 
         [Fact]

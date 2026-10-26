@@ -447,6 +447,30 @@ namespace NGGMultiplayer.Game
             }
         }
 
+        /// <summary>[Match] settings (the host's apply to the session); the defaults when unset.</summary>
+        public Func<MatchSettings> ReadMatchSettings { get; set; }
+
+        public MatchSettings MatchSettings
+        {
+            get
+            {
+                try
+                {
+                    return ReadMatchSettings?.Invoke() ?? MatchSettings.Default;
+                }
+                catch (Exception)
+                {
+                    return MatchSettings.Default;
+                }
+            }
+        }
+
+        /// <summary>The competitive 9-hole round this player sees (Presence's match), or null. The HUD reads it.</summary>
+        internal Presence.MatchState Match { get; set; }
+
+        /// <summary>The native match HUD (leaderboard, scorecard) is up, so the IMGUI scorecard stays hidden.</summary>
+        public bool NativeMatchHudShown { get; set; }
+
         /// <summary>The scorecard key's default: H, which the game binds to nothing (the game binds Tab, #67).</summary>
         public const KeyCode DefaultScorecardKey = KeyCode.H;
 

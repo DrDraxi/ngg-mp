@@ -63,5 +63,12 @@ namespace NGGMultiplayer.Testing
 
         /// <summary>The local player and ball: position, mode, shot state.</summary>
         string DescribePlayer();
+
+        /// <summary>
+        /// The competitive 9-hole round: <c>status</c> (the match, this game's round, the turn gate), <c>start</c> (the
+        /// LMUGC machine's button), <c>cup</c> (drops the local ball into the current hole's cup), <c>resume</c> (the
+        /// ball's "Next Shot" as the player would use it), <c>pickup</c>, <c>card</c> (the group scorecard's rows).
+        /// </summary>
+        string Match(string action);
     }
 }

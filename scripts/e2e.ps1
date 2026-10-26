@@ -5,6 +5,7 @@
 #   -Stop      only quit the test copies.
 #   -HostOnly  stop after Host is hosting.
 #   -Reuse     keep copies that are already running (no reinstall).
+#   -Nine      Host plays Just Play Nine (JustGolf) instead of Story (for scripts/e2e-match.ps1).
 # Checks on the way: your real save folder is hashed before and after (it must not change), and so is the Client copy's
 # own save folder (a client's own save must not change while it plays on the host's).
 # Unity PlayerPrefs: the copies have the real game's company and product name (compiled into the game's data, not
@@ -18,7 +19,8 @@ param(
     [int]$Height = 720,
     [switch]$Stop,
     [switch]$HostOnly,
-    [switch]$Reuse
+    [switch]$Reuse,
+    [switch]$Nine
 )
 $ErrorActionPreference = "Stop"
 $api = @{ Host = "http://127.0.0.1:27300"; Client = "http://127.0.0.1:27301" }
@@ -134,7 +136,14 @@ $clientSaves = Join-Path $TestDir "Client\Saves"
 $clientBefore = Get-SaveHashes $clientSaves
 
 Start-Copy "Host" 0
-Invoke-Cmd "Host" "click Play" | Out-Null
+if ($Nine) {
+    Invoke-Cmd "Host" "click Just Play Nine" | Out-Null
+    # A confirmation (a JustGolf run in progress) is answered with yes when it shows.
+    Start-Sleep 2
+    $r = Get-Api "$($api.Host)/cmd?line=$([uri]::EscapeDataString('click Yes'))" 20
+} else {
+    Invoke-Cmd "Host" "click Play" | Out-Null
+}
 Wait-Until "Host in the world" {
     $s = Get-Api "$($api.Host)/status" 5
     if ($s -and $s.scene -match "world ready") { return $s }

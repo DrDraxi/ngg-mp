@@ -151,6 +151,10 @@ Encoding: NetWriter little-endian; `str` = WriteString (UTF-8, varuint length; r
 | `ngg.pr.round` | any -> All | R | `vu roundId, b event (0 start, 1 finished, 2 aborted), vi total` | sender's own |
 | `ngg.pr.hole` | any -> All | R | `vu roundId, b hole (1..9), vi strokes, vi par` | ranges |
 | `ngg.pr.card` | host -> Peer | R | `vu playerCount, n * (u64 peer, vu roundId, b finished, 9 * vi strokes (0 = unplayed))` | clients may not send |
+| `ngg.pr.match` | host -> All | R | `vu matchId (0 = none)`, then `vu sequence, b phase, b mode, u64 turn, b maxStrokes, 9 * b par, vu count, n * (u64 peer, vu order, b joinedAtHole, bool left, f distance (-1 unknown), 9 * (b strokes, b state))` (7.8) | clients may not send |
+| `ngg.pr.mstroke` | client -> Host | R | `vu matchId, b hole, b strokes, f distance (-1 unknown), bool holed, bool pickUp` | to host, parses; host checks match, hole, turn |
+| `ngg.pr.mstart` | client -> Host | R | (empty): the client pressed the round machine | to host; host starts only in JustGolf |
+| `ngg.pr.mretire` | client -> Host | R | `vu matchId`: the client ended its round early | to host, parses |
 | `ngg.pg.world` | any -> Others | R | `b op, str id (<=128), bool flag` (2.4) | op known, id length, world ready |
 | `ngg.pg.story` | any -> Others | R | `str method` | method in the replicate list (6.10) |
 | `ngg.pg.storyHost` | client -> Host | R | `str method` | method in the host-executed list |
@@ -815,6 +819,46 @@ round is what the host save records (the game's own code); clients' rounds are s
 - JustGolf: `AddScoreToCard` runs for the host only (Lifecycle skips it on clients); the host scorecard reaches
   clients as `sc`.
 
+### 7.8 Competitive nine holes (1.1.0, `MatchSync`, `Model/Match*.cs`, `Menus/MatchHud.cs`)
+
+In JustGolf ("Just Play Nine") with `[Match] Competitive = true` (default) the round is a match: everyone plays the
+same hole, the next hole starts when all players are done, and a group leaderboard ranks the players by score to
+par. Story (the LMUGC terminal in the campaign) stays co-op as in 7.7. Game facts: `docs/gamemap/08-justgolf.md`.
+
+- **Host-authoritative.** The host owns one `MatchState` and broadcasts the whole of it as `ngg.pr.match` on every
+  change (a few hundred bytes for 16 players). Clients report strokes (`ngg.pr.mstroke`); the host checks match id,
+  hole and turn, then updates and rebroadcasts. `Sequence` counts changes.
+- **Start.** Pressing the round machine (`LMUGC.StartChallenge`) on the host starts the match for every player in
+  the world. On a client the prefix also sends `ngg.pr.mstart`; the host starts as if pressed (a host with
+  `Competitive = false` ignores it, and the client's own round is the side-by-side round of 7.7). A peer not in
+  the round yet (or in an old round ahead of the match) runs the game's own `StartChallenge` once per match id
+  (retried every 3 s while it is refused), so the game's scorecard, tee and swing panel work unchanged.
+- **Turns** (`[Match] TurnOrder = Turns`, default): on the tee, honours (the lowest score on the previous hole
+  first, ties look back hole by hole, then join order); after that the player farthest from the cup (horizontal
+  distance reported when the ball rests; a killed ball counts from where it was hit). `Free` has no turns but
+  holes still wait for everyone. Out of turn, the mod's prefixes refuse `ClubSwing.DetectShot/HandleShot`, the
+  ball's "Next Shot" (`FPSInteractable.Interact` with `ContinueShot`) and `LMUGC.RetakeShot` (practice swings
+  pass), with a notice.
+- **Holes.** `CompleteHole` reports a holed ball. `[Match] MaxStrokes` (default 10, 0 = no limit, at most 30) picks a
+  player up: the hole counts as the limit. The harness and the scorecard offer a manual pick-up (strokes + 1).
+  When every player is done the host waits 4 s (`HoleBreakSeconds`) and advances. The game moves the ball to the
+  next tee on its own once the player leaves golf mode: the `TeleportBallToHole(hole, false)` prefix holds that
+  until the match reaches that hole, then releases it.
+- **Catch-up.** A peer whose game is behind the match (a pick-up, a late join, a reload) gets the match's scores
+  written into `m_run.lmugcScore`, `UpdateScoreCard`, and `TeleportBallToHole(target, true)`; after hole 9
+  `CompleteNormalGolfRound`. Late joiners start on the current hole; holes they missed count par + 2 (the game's
+  own rule for unplayed holes).
+- **Leaving.** A player who leaves the session or ends the round early (`CompleteNormalGolfRound` before 9 holes,
+  e.g. pause "Restart From Hole 1": `ngg.pr.mretire`) is out, shown last; the turn passes on. The match ends when
+  nobody is left, or when the host leaves the nine holes.
+- **Scores and the save.** Each game still records its own round (the host's in the host save, 7.7); money,
+  unlocks and clubs are untouched.
+- **HUD.** A turn banner (the game's orange "Multihit Retry" banner, green on your shot), the group scorecard in
+  the game's 9-slice style (held scorecard key, shown during the hole break and for 20 s after the round), the
+  player list as a leaderboard, and the game's reminder line replaced by "Bob's turn" / "Waiting for ...". The
+  IMGUI card of 7.7 is not drawn while the native card is shown.
+- **Harness.** `match status|start|resume|cup|pickup|card` (TESTING.md).
+
 ---
 
 ## 8. Moving and physics world objects (Progression owns the decision, Presence the ghosts)
@@ -971,7 +1015,7 @@ client refuse to join.
   (PlayGame, PlaySetUp, PlayNineButtonPressed, PlayNine), `lc.pause.quit`, `lc.pause.menu`, `lc.pause.menu.exit`,
   `lc.pause.input`, `lc.pause.input.fps`, `lc.pause.input.swing`.
 - Presence: `pr.pose`, `pr.pose.flags`, `pr.ball`, `pr.ball.state`, `pr.ball.body`, `pr.info`, `pr.avatar`,
-  `pr.skin`, `pr.trail`, `pr.shot`, `pr.rest`, `pr.holed`, `pr.wind`, `pr.round`, `pr.round.pars`, `pr.hud`.
+  `pr.skin`, `pr.trail`, `pr.shot`, `pr.rest`, `pr.holed`, `pr.wind`, `pr.round`, `pr.round.pars`, `pr.hud`, `pr.match`.
 - Progression: `pg.track`, `pg.track.exitBounty`, `pg.track.loadSet`, `pg.track.streak`, `pg.track.active`,
   `pg.track.deleteRun`, `pg.bounty`, `pg.bounty.pay`, `pg.bounty.boards`, `pg.bounty.tiers`, `pg.bounty.refund`,
   `pg.bounty.quit`, `pg.bank`, `pg.bank.hook`, `pg.objectStates`, `pg.challenge.text`, `pg.unlock.clubPanel`, `pg.unlock.spin`,

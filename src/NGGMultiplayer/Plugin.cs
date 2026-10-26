@@ -118,6 +118,8 @@ namespace NGGMultiplayer
                     };
                     game.Context.ReadLook = () => config.Character.Value;
                     game.Context.SaveLook = look => config.Character.Value = look;
+                    game.Context.ReadMatchSettings = () => new Game.MatchSettings(config.Competitive.Value,
+                        config.TurnOrder.Value, config.MaxStrokes.Value);
                 }
             }
             catch (Exception e)

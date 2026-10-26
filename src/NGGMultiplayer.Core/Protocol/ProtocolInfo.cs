@@ -6,7 +6,7 @@ namespace NGGMultiplayer.Core.Protocol
         public const int Version = 2;
 
         /// <summary>Human-readable mod version, shown to the user on a version mismatch.</summary>
-        public const string ModVersion = "1.0.0";
+        public const string ModVersion = "1.1.0";
 
         /// <summary>Largest packet any transport must accept (Steam's reliable send limit).</summary>
         public const int MaxPacketSize = 512 * 1024;

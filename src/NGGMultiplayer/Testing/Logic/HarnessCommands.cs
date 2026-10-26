@@ -57,7 +57,9 @@ namespace NGGMultiplayer.Testing
             "  interact [category] <name, id or path part> [@n]  use it as the game does (Interact, tee, pad, trigger)\n" +
             "  bounty start <set> | bounty state | bounty exit\n" +
             "  mode <golf|walk> | shoot [power 0..1] [angle] [ShotType] | shoot next | shoot again\n" +
-            "  locks [text] | dialogue [state|next|triggers [text]] | remotes | player";
+            "  locks [text] | dialogue [state|next|triggers [text]] | remotes | player\n" +
+            "  match [status|start|cup|resume|pickup|card]  the competitive nine holes: state, the machine's button, hole\n" +
+            "                             the ball out, the ball's Next Shot (turn gate), pick up, the group scorecard";
 
         public const double MaxWaitSeconds = 600;
         public const float DefaultKeyHold = 0.1f;
@@ -192,6 +194,7 @@ namespace NGGMultiplayer.Testing
                     case "dialogue": return Dialogue(command);
                     case "remotes": return _play != null ? _play.DescribeRemotes() : NoPlay;
                     case "player": return _play != null ? _play.DescribePlayer() : NoPlay;
+                    case "match": return _play != null ? _play.Match(command.ArgLower(1) ?? "status") : NoPlay;
                     default: return "unknown command '" + command.Words[0] + "'. " + Help;
                 }
             }

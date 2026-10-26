@@ -38,6 +38,7 @@ namespace NGGMultiplayer.Tests.Game
             {
                 "ngg.lc.scene",
                 "ngg.pr.info", "ngg.pr.shot", "ngg.pr.rest", "ngg.pr.holed", "ngg.pr.wind", "ngg.pr.round", "ngg.pr.hole", "ngg.pr.card",
+                "ngg.pr.match", "ngg.pr.mstroke", "ngg.pr.mstart", "ngg.pr.mretire",
                 "ngg.pg.world", "ngg.pg.story", "ngg.pg.storyHost", "ngg.pg.claim", "ngg.pg.grant", "ngg.pg.bank",
                 "ngg.pg.ballUnlock", "ngg.pg.note", "ngg.pg.digest", "ngg.pg.roundScore", "ngg.pg.lmugcBest"
             };
