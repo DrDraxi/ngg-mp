@@ -360,7 +360,7 @@ with the harness, and `cannot ...: not in the world` in the menus.
 | `dialogue [state]` / `dialogue next` / `dialogue triggers [text]` | Dialogue / cutscene state: `moveLocked`, player mode, the DialogueManager's flags, video players playing, active dialogue triggers, `timeScale`. `next` presses the dialogue's next button. | `moveLocked True` while a dialogue or cutscene runs. |
 | `remotes` | Each remote player / ball: shown or HIDDEN, position, distance, renderers, trail and line renderers (emitting or not), and `DANGER` if one has a collider or rigidbody. | `remotes: N` ... `trails: T, drawing: D`. |
 | `player` | Local feet, facing, mode, club, the ball (hit, stroke, moving, own trail), bank. | `feet (...)`, `ball ...`. |
-| `match status\|card\|start\|resume\|cup\|pickup` | The competitive nine holes (GAME_INTEGRATION 7.8). `status`: the local round (`inLMUGC`, the game's scores, the ball's stroke and `next-shot ready`, mode, `inMatch`, `mayPlay`, `holding-next-tee`, the wait reason) and the match (`match <id> Turns Playing hole 3/9 (par 3) turn <name> seq <n>`, then one line per player: position, name, `(you)`, to par, thru, total, `[3,4,~1,-,...]`: `~n` = n strokes on the open hole, `n*` picked up, `m` missed). `card`: the match only. `start`: the round machine's StartLMUGC button (a client asks the host). `resume`: the ball's Next Shot (the turn gate applies). `cup`: drops the ball into the current hole's cup through `BallTarget.OnTriggerEnter` (scores the strokes so far + 1, like the holing swing; refused with `no stroke on hole N yet` while the ball waits on the tee for its Next Shot). `pickup`: gives up the hole. | `match 7 Turns Playing hole 1/9 (par 3) turn ...`; out of turn `resume` says `refused: <name>'s turn`. |
+| `match status\|card\|start\|resume\|cup\|pickup` | The competitive nine holes (GAME_INTEGRATION 7.8). `status`: the local round (`inLMUGC`, the game's scores, the ball's stroke and `next-shot ready`, mode, `inMatch`, `mayPlay`, `holding-next-tee`, the wait reason, the HUD's turn `banner`) and the match (`match <id> Turns Playing hole 3/9 (par 3) turn <name> seq <n>`, then one line per player: position, name, `(you)`, to par, thru, total, `[3,4,~1,-,...]`: `~n` = n strokes on the open hole, `n*` picked up, `m` missed). `card`: the match only. `start`: the round machine's StartLMUGC button (a client asks the host). `resume`: the ball's Next Shot (the turn gate applies). `cup`: drops the ball into the current hole's cup through `BallTarget.OnTriggerEnter` (scores the strokes so far + 1, like the holing swing; refused with `no stroke on hole N yet` while the ball waits on the tee for its Next Shot). `pickup`: gives up the hole. | `match 7 Turns Playing hole 1/9 (par 3) turn ...`; out of turn `resume` says `refused: <name>'s turn`. |
 
 `scripts/e2e-scenarios.ps1` plays scenarios on the two running copies of 2.7 (start them first with `scripts/e2e.ps1`,
 or pass `-Start`):
@@ -385,8 +385,10 @@ and PNGs (both windows side by side, and each one). Exit code 1 if any verdict i
 | e. remote ball trail | The watcher stands beside the shooter, who shoots; the watcher's `remotes` is read three times during the flight. | The watcher's ghost ball has a trail renderer that draws. |
 
 `scripts/e2e-match.ps1` plays a competitive nine-hole round on both copies (start them in Just Play Nine:
-`scripts/e2e.ps1 -Nine`, or pass `-Start`): the Client presses the round machine, the copy out of turn tries to
-swing, then the copies play in the order the host gives (real shots on the first `-ShotHoles` holes, then `match
+`scripts/e2e.ps1 -Nine`, plus `-TurnOrder Free|Turns` to set the order in both configs, or pass `-Start`): the
+Client presses the round machine; with `[Match] TurnOrder = Turns` the copy out of turn tries to swing, with `Free`
+(the default) Host and Client swing straight after each other and no turn banner may show while a hole is open (only
+`Waiting for X to finish hole N` once done); then the copies play in the order the host gives (real shots on the first `-ShotHoles` holes, then `match
 cup`; the Client picks up on `-PickUpHole`), and both must end with the same final card. Results in
 `<TestDir>\match\<stamp>\` like the scenarios below.
 

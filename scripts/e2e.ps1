@@ -6,6 +6,7 @@
 #   -HostOnly  stop after Host is hosting.
 #   -Reuse     keep copies that are already running (no reinstall).
 #   -Nine      Host plays Just Play Nine (JustGolf) instead of Story (for scripts/e2e-match.ps1).
+#   -TurnOrder Free or Turns: sets [Match] TurnOrder in both copies (default: keep what their configs hold).
 # Checks on the way: your real save folder is hashed before and after (it must not change), and so is the Client copy's
 # own save folder (a client's own save must not change while it plays on the host's).
 # Unity PlayerPrefs: the copies have the real game's company and product name (compiled into the game's data, not
@@ -20,7 +21,9 @@ param(
     [switch]$Stop,
     [switch]$HostOnly,
     [switch]$Reuse,
-    [switch]$Nine
+    [switch]$Nine,
+    [ValidateSet("", "Free", "Turns")]
+    [string]$TurnOrder = ""
 )
 $ErrorActionPreference = "Stop"
 $api = @{ Host = "http://127.0.0.1:27300"; Client = "http://127.0.0.1:27301" }
@@ -125,7 +128,7 @@ if (-not $Reuse -or $Stop) {
     Stop-Copy "Host"
     Restore-RealPrefs
     if ($Stop) { return }
-    & "$PSScriptRoot\e2e-setup.ps1" -TestDir $TestDir -RealSaveDir $RealSaveDir
+    & "$PSScriptRoot\e2e-setup.ps1" -TestDir $TestDir -RealSaveDir $RealSaveDir -TurnOrder $TurnOrder
 }
 
 $real = Get-Process -Name "Normal Golf Game" -ErrorAction SilentlyContinue | Where-Object { $_.Path -notlike "$TestDir\*" }

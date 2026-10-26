@@ -19,6 +19,9 @@ param(
     [int]$HostPort = 27300,
     [int]$ClientPort = 27301,
     [int]$DirectPort = 27250,
+    # [Match] TurnOrder of both copies (Free or Turns); empty keeps what their configs hold.
+    [ValidateSet("", "Free", "Turns")]
+    [string]$TurnOrder = "",
     [switch]$NoBuild
 )
 $ErrorActionPreference = "Stop"
@@ -94,6 +97,7 @@ foreach ($name in $copies.Keys) {
     $text = Set-Key $text "Debug" "EnableTestHarness" "true"
     $text = Set-Key $text "Debug" "DevControlPort" $copies[$name].Port
     $text = Set-Key $text "Debug" "SaveDirOverride" $saves
+    if ($TurnOrder) { $text = Set-Key $text "Match" "TurnOrder" $TurnOrder }
     Set-Content $cfg $text -NoNewline
     Write-Host "$name ready: $dst (dev API http://127.0.0.1:$($copies[$name].Port)/, saves $saves)"
 }

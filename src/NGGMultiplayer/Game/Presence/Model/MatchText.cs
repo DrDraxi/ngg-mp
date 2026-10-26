@@ -224,6 +224,29 @@ namespace NGGMultiplayer.Game.Presence
             return match.Turn.IsValid ? Possessive(name(match.Turn)) + " turn" : null;
         }
 
+        /// <summary>
+        /// The local player's result on the current hole once they are done with it, for the game's reminder line (the
+        /// banner already says who is still playing): "Hole 3: Birdie (2)", "Hole 3: picked up (8)"; null while it is
+        /// open or for a hole they missed.
+        /// </summary>
+        public static string HoleDone(MatchState match, PeerId local)
+        {
+            var me = match?.Get(local);
+            if (me == null || match.Hole < 1 || match.Hole > MatchState.Holes)
+                return null;
+            int? score = match.HoleScore(me, match.Hole);
+            if (score == null)
+                return null;
+            string strokes = score.Value.ToString(CultureInfo.InvariantCulture);
+            string hole = "Hole " + match.Hole.ToString(CultureInfo.InvariantCulture) + ": ";
+            switch (me.States[match.Hole - 1])
+            {
+                case HoleState.Holed: return hole + MatchState.ScoreName(score.Value, match.Par(match.Hole)) + " (" + strokes + ")";
+                case HoleState.PickedUp: return hole + "picked up (" + strokes + ")";
+                default: return null;
+            }
+        }
+
         /// <summary>"Alice's", "James'".</summary>
         public static string Possessive(string name)
         {

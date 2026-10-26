@@ -2,8 +2,10 @@
 # Play Nine first: scripts/e2e.ps1 -Nine (or pass -Start). Both copies are played through their dev control API
 # (/cmd runs the harness's 'match', 'shoot' and 'mode' commands; docs/TESTING.md 2.8), so no focus, keyboard or mouse.
 #   1. The Client presses the round machine: the round must start for both (the client asks the host).
-#   2. Out of turn: whoever waits tries to swing; the swing must be refused (the ball does not move).
-#   3. Then turn by turn: the player the host names plays. On the first -ShotHoles holes each stroke is a real
+#   2. [Match] TurnOrder = Turns: whoever waits tries to swing; the swing must be refused (the ball does not move).
+#      TurnOrder = Free: Host swings, Client swings straight after; both balls must move, no wait or turn banner.
+#   3. Then hole by hole: a copy that may play plays (Free: no banner while its hole is open, only "Waiting for X to
+#      finish hole N" once done). On the first -ShotHoles holes each stroke is a real
 #      'shoot', after that the ball is dropped in the cup ('match cup'). The Client picks up on hole -PickUpHole.
 #      After holing, the player leaves golf mode; the next tee waits until everyone is done.
 #   4. After hole 9: both show the same final card, the winner line, and the results.
@@ -56,7 +58,7 @@ function Get-Api([string]$url, [int]$timeout = 10) {
 function Send([string]$who, [string]$line) {
     $r = Get-Api "$($api[$who])/cmd?line=$([uri]::EscapeDataString($line))" 75
     $text = if (-not $r) { "(no answer)" } elseif ($r.error) { "ERROR: $($r.error)" } elseif ($r.queued) { "(still queued after 60 s)" } else { [string]$r.result }
-    Add-Content $md "**$who** ``> $line```r`n``````r`n$text`r`n``````r`n" -Encoding UTF8
+    Add-Content $md "**$who** ``> $line```r`n```````r`n$text`r`n```````r`n" -Encoding UTF8
     Write-Host ("[{0}] > {1}`n    {2}" -f $who, $line, (($text -split "`n") -join "`n    "))
     return $text
 }
@@ -124,6 +126,8 @@ function Parse-Match([string]$text) {
         MayPlay = $text -match "mayPlay True"; NextShot = $text -match "next-shot ready"
         Golf = $text -match "mode Golf"; Shot = if ($text -match "ball shot (-?\d+)") { [int]$Matches[1] } else { -99 }
         Ball = if ($text -match "ball shot -?\d+ at (\([^)]*\))") { $Matches[1] } else { "" }
+        Wait = if ($text -match "wait '([^']*)'") { $Matches[1] } else { "" }
+        Banner = if ($text -match "banner '([^']*)'") { $Matches[1] } else { "" }
         Text = $text
     }
 }
@@ -183,8 +187,30 @@ if ($hm.Mode -eq "Turns") {
     Verdict "2 $waiter cannot swing out of turn" $(if (-not $moved -and -not $after.MayPlay) { "PASS" } else { "FAIL" }) "ball $($before.Ball) -> $($after.Ball), mayPlay $($after.MayPlay)"
     Shot "out-of-turn"
 } else {
-    Note "Free order: no turn gate to check."
+    # Free order: both tee off at once. Host swings, Client swings straight after (no waiting for a turn) while the
+    # Host's ball is still open on the hole; both balls must move and neither copy may show a wait or turn banner.
+    Note "Free order: both swing at once."
+    $ready = @{}
+    foreach ($w in @("Host", "Client")) {
+        $s = Status $w
+        if ($s.NextShot) { Send $w "match resume" | Out-Null; Start-Sleep 2; $s = Status $w }
+        $ready[$w] = $s
+    }
+    Send "Host" "shoot $Power" | Out-Null
+    Send "Client" "shoot $Power" | Out-Null
+    Start-Sleep 2
+    $mid = @{ Host = (Status "Host"); Client = (Status "Client") }
+    Shot "both-playing-free"
+    Start-Sleep 7
+    $done = @{ Host = (Status "Host"); Client = (Status "Client") }
+    $moved = @("Host", "Client") | Where-Object { $ready[$_].Ball -ne $done[$_].Ball }
+    $bothMay = $ready.Host.MayPlay -and $ready.Client.MayPlay
+    $hostOpen = $mid.Host.Cards.Count -ge 1 -and $mid.Host.Cards[0] -notmatch "^\d"
+    $nag = @("Host", "Client") | Where-Object { $ready[$_].Wait -or $ready[$_].Banner -or $mid[$_].Wait -or $mid[$_].Banner }
+    Verdict "2 both swing at once (Free)" $(if (@($moved).Count -eq 2 -and $bothMay -and $hostOpen -and @($nag).Count -eq 0) { "PASS" } else { "FAIL" }) `
+        "host ball $($ready.Host.Ball) -> $($done.Host.Ball), client ball $($ready.Client.Ball) -> $($done.Client.Ball), mayPlay host $($ready.Host.MayPlay) client $($ready.Client.MayPlay), host hole 1 open at the client's swing $hostOpen, banners/waits: $(if (@($nag).Count) { ($nag | ForEach-Object { "$_ '$($mid[$_].Wait)$($mid[$_].Banner)'" }) -join '; ' } else { 'none' })"
 }
+$freeNags = New-Object System.Collections.ArrayList
 
 # ---- 3. Turn by turn -------------------------------------------------------------------------------------------
 
@@ -210,7 +236,16 @@ for ($step = 0; $step -lt $MaxSteps; $step++) {
     # The copy that may play now (in turn order only one; both copies may share a player name).
     $who = $null
     $me = $null
-    foreach ($w in @("Host", "Client")) { $s = Status $w; if ($s -and $s.MayPlay) { $who = $w; $me = $s; break } }
+    foreach ($w in @("Host", "Client")) {
+        $s = Status $w
+        if (-not $s) { continue }
+        # Free order: no banner while the hole is open, only "Waiting for X to finish hole N" once done.
+        if ($s.Mode -eq "Free" -and $s.Phase -eq "Playing" -and -not $s.HoleComplete) {
+            $bad = if ($s.MayPlay) { $s.Banner -or $s.Wait } else { $s.Banner -and $s.Banner -notmatch "^(Waiting for .+ to finish hole \d|Hole \d done)" }
+            if ($bad -and $freeNags.Count -lt 10) { [void]$freeNags.Add("$w hole $($s.Hole) mayPlay $($s.MayPlay): banner '$($s.Banner)' wait '$($s.Wait)'") }
+        }
+        if (-not $who -and $s.MayPlay) { $who = $w; $me = $s }
+    }
     if (-not $who) { Start-Sleep 2; continue }
     $hole = $me.Hole
     if ($who -eq "Client" -and $hole -eq $PickUpHole -and -not $pickedUp -and $me.Cards[$hole - 1] -notmatch "^\d") {
@@ -251,6 +286,9 @@ for ($step = 0; $step -lt $MaxSteps; $step++) {
             if ($mine.Hole -eq $hole -and $theirs.Cards.Count -ge $hole -and $theirs.Cards[$hole - 1] -notmatch "^\d") {
                 $heldChecked = $true
                 Verdict "3a next tee waits for everyone" $(if ($mine.Text -match "holding-next-tee|wait 'Waiting for") { "PASS" } else { "FAIL" }) (($mine.Text -split "`n")[0])
+                if ($mine.Mode -eq "Free") {
+                    Verdict "3b done player sees 'Waiting for X to finish hole N'" $(if ($mine.Banner -match "^Waiting for .+ to finish hole $hole$") { "PASS" } else { "FAIL" }) "banner '$($mine.Banner)'"
+                }
                 Shot "waiting-for-$($other.ToLowerInvariant())"
             }
         }
@@ -258,6 +296,10 @@ for ($step = 0; $step -lt $MaxSteps; $step++) {
 }
 
 # ---- 4. Results ------------------------------------------------------------------------------------------------
+
+if ($hm -and $hm.Mode -eq "Free" -or $freeNags.Count -gt 0) {
+    Verdict "3c no turn banner during free play" $(if ($freeNags.Count -eq 0) { "PASS" } else { "FAIL" }) $(if ($freeNags.Count -eq 0) { "checked every step on both" } else { $freeNags -join '; ' })
+}
 
 Note "`r`n## 4. Results"
 Start-Sleep 3

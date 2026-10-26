@@ -122,6 +122,38 @@ namespace NGGMultiplayer.Tests.GamePresence
         }
 
         [Fact]
+        public void HoleDone_GivesTheLocalResult_NotTheBannerAgain()
+        {
+            var match = NewMatch(MatchMode.Free, players: new[] { Host, Alice });
+            Assert.Null(MatchText.HoleDone(match, Host));
+            Assert.True(match.ReportStroke(Host, 1, 3, 0f, true));
+            Assert.Equal("Hole 1: Birdie (3)", MatchText.HoleDone(match, Host));
+            Assert.Null(MatchText.HoleDone(match, Alice));
+            Assert.Null(MatchText.HoleDone(match, Bob));
+            Assert.True(match.PickUp(Alice));
+            Assert.Equal("Hole 1: picked up (6)", MatchText.HoleDone(match, Alice));
+            Assert.Equal("Waiting for Alice to finish hole 1",
+                MatchText.Banner(NewMatchWithHostDone(), Host, id => id == Host ? "Host" : "Alice", out _));
+        }
+
+        private static MatchState NewMatchWithHostDone()
+        {
+            var match = NewMatch(MatchMode.Free, players: new[] { Host, Alice });
+            Assert.True(match.ReportStroke(Host, 1, 4, 0f, true));
+            return match;
+        }
+
+        [Fact]
+        public void FreeOrder_NoBannerWhileTheHoleIsOpen()
+        {
+            var match = NewMatch(MatchMode.Free, players: new[] { Host, Alice });
+            Assert.True(match.ReportStroke(Host, 1, 1, 80f, false));
+            Assert.Null(MatchText.Banner(match, Host, id => id == Host ? "Host" : "Alice", out bool mine));
+            Assert.False(mine);
+            Assert.Null(MatchText.Banner(match, Alice, id => id == Host ? "Host" : "Alice", out _));
+        }
+
+        [Fact]
         public void WrongHoleAndUnknownPlayers_AreIgnored()
         {
             var match = NewMatch(players: new[] { Host, Alice });

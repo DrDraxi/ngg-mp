@@ -70,6 +70,10 @@ namespace NGGMultiplayer.Testing
             string wait = sync.WaitReason();
             if (!string.IsNullOrEmpty(wait))
                 text.Append(" wait '").Append(wait).Append('\'');
+            // The HUD's turn banner (MatchHud), as the player sees it.
+            string banner = MatchText.Banner(sync.Match, sync.Context.LocalId, sync.Context.PlayerName, out _);
+            if (!string.IsNullOrEmpty(banner))
+                text.Append(" banner '").Append(banner).Append('\'');
             text.Append('\n').Append(MatchText.Plain(sync.Match, sync.Context.LocalId, sync.Context.PlayerName));
             return text.ToString();
         }

@@ -770,9 +770,10 @@ namespace NGGMultiplayer.Game.Presence
                     }
                     return;
                 }
-                // The ball sits in the cup (hidden), so the game would say "Ball in water".
+                // The ball sits in the cup (hidden), so the game would say "Ball in water". The banner says who is still
+                // playing; the reminder shows the player's own result instead of the same line twice.
                 if (self._heldHole > 0 || self.LocalPlayer.IsDone(self._match.Hole))
-                    reminder.SetString(self.WaitingForOthersText());
+                    reminder.SetString(MatchText.HoleDone(self._match, self._context.LocalId) ?? self.WaitingForOthersText());
                 else if (!self.LocalMayPlay)
                     reminder.SetString(self.WaitReason());
                 else
