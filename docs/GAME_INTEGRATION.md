@@ -833,10 +833,10 @@ par. Story (the LMUGC terminal in the campaign) stays co-op as in 7.7. Game fact
   `Competitive = false` ignores it, and the client's own round is the side-by-side round of 7.7). A peer not in
   the round yet (or in an old round ahead of the match) runs the game's own `StartChallenge` once per match id
   (retried every 3 s while it is refused), so the game's scorecard, tee and swing panel work unchanged.
-- **Turns** (`[Match] TurnOrder = Turns`, default): on the tee, honours (the lowest score on the previous hole
+- **Order.** `[Match] TurnOrder = Free` (default, the user's pick): everyone plays the hole at once; the next hole
+  still waits for everyone. `Turns`: on the tee, honours (the lowest score on the previous hole
   first, ties look back hole by hole, then join order); after that the player farthest from the cup (horizontal
-  distance reported when the ball rests; a killed ball counts from where it was hit). `Free` has no turns but
-  holes still wait for everyone. Out of turn, the mod's prefixes refuse `ClubSwing.DetectShot/HandleShot`, the
+  distance reported when the ball rests; a killed ball counts from where it was hit). Out of turn, the mod's prefixes refuse `ClubSwing.DetectShot/HandleShot`, the
   ball's "Next Shot" (`FPSInteractable.Interact` with `ContinueShot`) and `LMUGC.RetakeShot` (practice swings
   pass), with a notice.
 - **Holes.** `CompleteHole` reports a holed ball. `[Match] MaxStrokes` (default 10, 0 = no limit, at most 30) picks a

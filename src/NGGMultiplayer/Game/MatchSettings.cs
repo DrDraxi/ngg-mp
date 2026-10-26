@@ -14,7 +14,7 @@ namespace NGGMultiplayer.Game
             MaxStrokes = maxStrokes;
         }
 
-        public static MatchSettings Default => new MatchSettings(true, MatchMode.Turns, DefaultMaxStrokes);
+        public static MatchSettings Default => new MatchSettings(true, MatchMode.Free, DefaultMaxStrokes);
 
         public const int DefaultMaxStrokes = 10;
 

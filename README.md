@@ -10,8 +10,8 @@ peer-to-peer. One player hosts, friends join, and everyone plays in the host's w
 - Other players shown as golfers that face your camera (standing, walking, crouching, swinging), with name tags,
   their ball and its trail.
 - Player list in the HUD, hole-out notices and a shared round scorecard (hold **H**).
-- Competitive *Just Play Nine*: everyone plays the same hole in turn (honours on the tee, then farthest from the
-  cup), the next hole waits for everyone, and a group scorecard and leaderboard rank the players by score to par.
+- Competitive *Just Play Nine*: everyone plays the same hole, the next hole waits for everyone, and a group
+  scorecard and leaderboard rank the players by score to par. Real golf turns are an option.
 - Male or female golfer, picked with the Character selector.
 - Your own save is never touched while you play in someone else's world; it is backed up before you join.
 - Direct IP mode (LAN or a VPN like Tailscale) as an alternative to Steam lobbies.
@@ -45,9 +45,10 @@ To uninstall, delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version` a
 Good to know:
 
 - Everyone plays their own ball; other players' balls are ghosts that don't collide with you.
-- *Just Play Nine* is a match: anyone presses the round machine and the round starts for everyone. Play when the
-  banner says "Your shot"; holding **H** shows the group scorecard. A player who reaches the stroke limit picks up.
-  Players who join mid-round start on the current hole (missed holes count par + 2). Story's 9 holes stay co-op.
+- *Just Play Nine* is a match: anyone presses the round machine and the round starts for everyone. Everyone plays
+  the hole at once (with `TurnOrder = Turns`, when the banner says "Your shot"); holding **H** shows the group
+  scorecard. A player who reaches the stroke limit picks up. Players who join mid-round start on the current hole
+  (missed holes count par + 2). Story's 9 holes stay co-op.
 - Bounties can be played separately or together; a completion counts once and pays once into the shared bank.
 - Dialogue and cutscenes play only for the player who triggered them; the results reach everyone.
 - Only the host starts a game from the main menu, and only the host's save is written.
@@ -64,7 +65,7 @@ Good to know:
 | Lobby | `MaxPlayers` | `4` | Players per session, host included (2-16). |
 | Presence | `Character` | `Male` | `Male` or `Female` (also on the multiplayer screens). |
 | Match | `Competitive` | `true` | Just Play Nine as a match; `false` plays it side by side as before. Host's setting. |
-| Match | `TurnOrder` | `Turns` | `Turns` (golf order) or `Free` (everyone plays at once; holes still wait). Host's setting. |
+| Match | `TurnOrder` | `Free` | `Free` (everyone plays the hole at once; the next hole waits for all) or `Turns` (golf order: honours, then farthest from the cup). Host's setting. |
 | Match | `MaxStrokes` | `10` | Pick up at this many strokes on a hole; `0` = no limit. Host's setting. |
 | Network | `Transport` | `Steam` | `Steam`, or `Direct` for plain UDP to `HostAddress:DirectPort`. Needs a restart. |
 | Network | `HostAddress` | `127.0.0.1` | Direct: the host's IP (the host uses `0.0.0.0`). |
