@@ -1,4 +1,4 @@
-NGG Multiplayer 1.0.0 - co-op mod for Normal Golf Game
+NGG Multiplayer 1.1.0 - co-op mod for Normal Golf Game
 =======================================================
 
 What is in this zip
